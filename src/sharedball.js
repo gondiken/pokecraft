@@ -4,6 +4,9 @@
 // the truth and they send its state (at once on a touch, then a few times a second while it moves). The other browser rolls
 // its own copy on between messages and takes every newer state. Touch it yourself and it is yours (`take`): so your own kick
 // never waits for the internet. Two touches at the same moment: the leader's stands.
+// A ball never goes through a player (owner 2026-11-27): matchrules.js `ballFrame` makes the friend a solid box in the OWNER's
+// browser (a kick at them bounces off at once on the kicker's screen) and every standing player a solid box in their own
+// browser (that touch takes the ball, so their own screen is right too).
 //   message: { q: ownership number, k: count within it, o: owner id, p: [x, y, z], v: [x, y, z], h: 1 held in hands, e?: 'out' | 'spot' }
 export const SHARE = { moving: 0.4, resting: 2, gap: 0.1, smooth: 0.18, snap: 6 };
 
@@ -52,8 +55,8 @@ export class SharedBall {
     this.q = m.q; this.seen = m.k; this.owner = m.o; this.held = !!m.h; this.dirty = false;
     b.pos.x = m.p[0]; b.pos.y = m.p[1]; b.pos.z = m.p[2];
     b.vel.x = m.v[0]; b.vel.y = m.v[1]; b.vel.z = m.v[2];
-    b.restFor = 0;
-    if (changed) b.kickedAt = b.time; // a fresh touch of theirs: mine waits a quarter second, like after my own
+    b.restFor = 0; // (never b.kickedAt: a friend's kick must not make the ball blind to MY body for a quarter second,
+    //                 or a ball kicked from close by flies straight through me; owner 2026-11-27)
     const dx = was.x - b.pos.x, dy = was.y - b.pos.y, dz = was.z - b.pos.z;
     const far = Math.hypot(dx, dy, dz) > SHARE.snap || m.e;
     this.off.x = far ? 0 : dx; this.off.y = far ? 0 : dy; this.off.z = far ? 0 : dz;

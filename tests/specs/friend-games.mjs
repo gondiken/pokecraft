@@ -151,7 +151,43 @@ export default async function ({ browser, base, t }) {
     t.ok(P.L.sh.held && P.L.sh.owner === 'G', 'ball: "in their hands" reaches the other side');
     t.ok(SHARE.moving <= 0.5 && SHARE.gap >= 0.1, 'ball: at most a few messages a second');
 
-    const { SPORTS, startSpot, scorerOf, MatchScore, decide } = await src('matchrules.js');
+    const { SPORTS, startSpot, scorerOf, MatchScore, decide, BODY, ballFrame } = await src('matchrules.js');
+    // a ball never goes through a player (owner 2026-11-27), however close and hard the kick and however slow the frames
+    const stand = (x, z, yaw) => ({ x, y: 11, z, vx: 0, vz: 0, yaw, halfW: 0.3, height: 1.8 });
+    for (const [gap, speed] of [[1.6, 14], [2.5, 14], [3.5, 14], [8, 14], [1.6, 24], [2.5, 24], [5, 24], [12, 9]]) for (const fps of [60, 20, 10]) for (const off of [0, 0.2, 0.5]) {
+      const friend = stand(50 + gap, 50 + off, Math.PI / 2), kicker = stand(48.7, 50, -Math.PI / 2), front = friend.x - BODY.half - BALL.r + 0.01;
+      // the kicker's screen: the friend is a solid box at once
+      const own = new Ball(solid, [50, 11.401, 50], BALL);
+      boot(own, { x: speed, y: 1, z: 0 });
+      let maxOwn = -1, hits = 0;
+      for (let i = 0; i < fps * 3; i++) { if (ballFrame(own, 1 / fps, kicker, friend).blocked) hits++; maxOwn = Math.max(maxOwn, own.pos.x); }
+      // the friend's own screen: the kick arrives as a message, then their own body stops the ball and it is theirs
+      const copy = new Ball(solid, [50, 11.401, 50], BALL), sh = new SharedBall(copy, 'G', 'L');
+      sh.apply({ q: 1, k: 1, o: 'L', p: [50, 11.401, 50], v: [speed, 1, 0], h: 0 });
+      let maxCopy = -1;
+      for (let i = 0; i < fps * 3; i++) { if (ballFrame(copy, 1 / fps, friend).touch) sh.take(); maxCopy = Math.max(maxCopy, copy.pos.x); }
+      if (!(maxOwn <= front && hits >= 1 && sh.mine && maxCopy <= front)) t.ok(false, `a ball kicked at a friend ${gap} blocks away (${off} to the side) at ${speed} blocks/s, ${fps} fps, went through them (kicker's screen ${maxOwn.toFixed(2)}, ${hits} bounces; their screen ${maxCopy.toFixed(2)}, theirs ${sh.mine}; their front is at ${front.toFixed(2)})`);
+    }
+    t.ok(true, 'ball: a kick (up to the ball\'s top speed) at a friend standing 1.6 to 12 blocks away never goes through them, on either screen, at 60, 20 and 10 frames a second');
+    {
+      // my own kick does not bounce off me: the ball right at my feet, kicked the way I face
+      const mine = new Ball(solid, [50.3, 11.401, 50], BALL), me = stand(50, 50, -Math.PI / 2);
+      boot(mine, { x: 14, y: 1, z: 0 });
+      let back = 99;
+      for (let i = 0; i < 60; i++) { ballFrame(mine, 1 / 60, me); back = Math.min(back, mine.vel.x); }
+      t.ok(back > 0 && mine.pos.x > 55, `ball: my own kick of a ball at my feet flies off (never back off my own body; x ${mine.pos.x.toFixed(1)})`);
+      // running into the ball still kicks it along (dribbling), as in the stadium's own game
+      const dr = new Ball(solid, [50.7, 11.401, 50], BALL), runner = { ...stand(50, 50, -Math.PI / 2), vx: 6 };
+      const first = ballFrame(dr, 1 / 60, runner).touch;
+      t.ok(first === 'kick' && dr.vel.x > 5, `ball: running into the ball kicks it along (${dr.vel.x.toFixed(1)} blocks/s)`);
+    }
+    {
+      const miss = new Ball(solid, [50, 11.401, 50], BALL);
+      boot(miss, { x: 14, y: 1, z: 0 });
+      let far = -1;
+      for (let i = 0; i < 180; i++) { ballFrame(miss, 1 / 60, stand(48.7, 50, -Math.PI / 2), { x: 53, y: 11, z: 52 }); far = Math.max(far, miss.pos.x); }
+      t.ok(far > 60, `ball: a kick past a friend (2 blocks to the side) flies on (${far.toFixed(1)})`);
+    }
     const { buildStadium } = await src('stadium.js'), { ZONES } = await src('playland.js'), { kit } = await src('picturelands.js');
     const world = { W: 224, D: 224, H: 48, data: new Uint8Array(224 * 224 * 48), ground: new Uint8Array(224 * 224), index(x, y, z) { return (y * 224 + z) * 224 + x; }, inBounds(x, y, z) { return x >= 0 && x < 224 && z >= 0 && z < 224 && y >= 0 && y < 48; }, get(x, y, z) { return this.inBounds(x, y, z) ? this.data[this.index(x, y, z)] : 0; } };
     kit(world);
@@ -247,14 +283,18 @@ export default async function ({ browser, base, t }) {
     // the play area and battles
     // (Dad is IT and counting: wait it out first)
     await waitFor(A, () => window.pokecraft.friendGames.state().info.frozen === 0, null, 8000);
-    const edge = await A.evaluate(() => {
-      const g = window.pokecraft, c = g.friendGames.state().info.center, p = g.player.pos;
-      const before = p.clone(); before.x = c[0] + 27; before.z = c[1];
-      const pos = before.clone(); pos.x = c[0] + 29; const vel = { x: 3, y: 0, z: 0 };
+    const edge = await A.evaluate(async () => {
+      const g = window.pokecraft, c = g.friendGames.state().info.center, p = g.player.pos, { TAG } = await import('/src/tagrules.js');
+      const free = p.clone(); free.x = c[0] + 60; free.z = c[1];
+      const far = free.clone(); far.x += 30; const v0 = { x: 3, y: 0, z: 0 };
+      g.friendGames.fence(far, free, v0); // 90 blocks from the middle: still inside
+      const before = p.clone(); before.x = c[0] + TAG.radius - 1; before.z = c[1];
+      const pos = before.clone(); pos.x = c[0] + TAG.radius + 1; const vel = { x: 3, y: 0, z: 0 };
       g.friendGames.fence(pos, before, vel);
-      return pos.distanceTo(before) < 1e-6 && vel.x === 0;
+      return { radius: TAG.radius, roam: Math.abs(far.x - (c[0] + 90)) < 1e-6 && v0.x === 3, back: pos.distanceTo(before) < 1e-6 && vel.x === 0 };
     });
-    t.ok(edge && await heard(A, /edge of the play area/), 'stepping out of the play area puts you back, with a kind toast');
+    t.ok(edge.radius >= 100 && edge.roam, `the play area is big (owner 2026-11-27): ${edge.radius} blocks every way from where you began`);
+    t.ok(edge.back && await heard(A, /edge of the play area/), 'stepping out of the play area puts you back, with a kind toast');
     const noBattle = await B.evaluate(async () => {
       const g = window.pokecraft, { makeCreature, buildModel } = await import('/src/species.js'), { Wild } = await import('/src/creatures.js');
       g.startBattle({ wild: new Wild(makeCreature('fluffin', 2), buildModel('fluffin'), g.player.pos.clone()) });
@@ -301,6 +341,64 @@ export default async function ({ browser, base, t }) {
     const stopAt = await B.evaluate(() => { const r = [...document.querySelectorAll('#mp button')].find(b => b.textContent === 'Stop tag').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
     await B.mouse.click(stopAt[0], stopAt[1]); // (a real click at the button)
     t.ok(await both(A, B, () => !window.pokecraft.friendGames.active) && await heard(A, /Kid stopped the game\./) && await said(B, /You stopped the game\./), 'Stop ends it for both, with words');
+    // Both sides always agree that a game is on (owner 2026-11-27: "on my screen he looked like IT" while his tablet was not playing).
+    // No single message is trusted: each of these loses one and the game still ends up the same on both screens.
+    const drop = (page, what, n = 99) => page.evaluate(([what, n]) => {
+      const mp = window.pokecraft.mp; mp.__send ??= mp.sendPlay.bind(mp); window.__dropped = []; let left = n;
+      mp.sendPlay = (to, d) => { if (left > 0 && (d.type === what || (d.type === 'g' && `g:${d.k}` === what))) { left--; window.__dropped.push(what); return; } mp.__send(to, d); };
+    }, [what, n]);
+    const undrop = page => page.evaluate(() => { const mp = window.pokecraft.mp; if (mp.__send) mp.sendPlay = mp.__send; });
+    const quiet = page => page.evaluate(() => { window.__toasts.length = 0; });
+    await standAt(A, 0); await standAt(B, 4, 3);
+    await A.waitForTimeout(1500);
+    // a) the start never arrives: the next heartbeat starts the friend's game
+    await drop(A, 'start');
+    await invite(A, B, 'tag');
+    t.ok(await both(A, B, () => window.pokecraft.friendGames.active) && await A.evaluate(() => window.__dropped.length === 1), 'a lost start: the friend still joins, a second later');
+    const s1 = [await fg(A), await fg(B)];
+    t.ok(s1[1].info.it === s1[0].info.me && Math.abs(s1[0].info.center[0] - s1[1].info.center[0]) < 0.01 && !s1[1].leader, 'and it is the same game: Dad is IT, the same play area');
+    await undrop(A);
+    // b) the friend's game is gone and the leader was not told: the leader stops too (no lonely IT! sign)
+    await quiet(A);
+    await drop(B, 'stop', 0); // (a reset says nothing by itself)
+    await B.evaluate(() => window.pokecraft.friendGames.reset());
+    t.ok(await waitFor(A, () => !window.pokecraft.friendGames.active, null, 6000) && await said(A, /Kid is not playing any more\. The game is over\./), 'the friend\'s game is gone without a word: Dad\'s game stops within a few seconds ("Kid is not playing any more.")');
+    t.ok(await A.evaluate(() => document.getElementById('hs-hud').classList.contains('hidden') && ![...window.pokecraft.mp.others.values()].some(a => a.model.children.some(c => c.userData.tagIt))), 'no chip and no IT! sign are left on Dad\'s screen');
+    await undrop(B);
+    // c) the leader's game is gone and the friend was not told: the friend asks, and stops
+    await A.waitForTimeout(1200);
+    await invite(A, B, 'tag');
+    await both(A, B, () => window.pokecraft.friendGames.active);
+    await quiet(B);
+    await drop(A, 'stop', 0);
+    await A.evaluate(() => window.pokecraft.friendGames.reset());
+    t.ok(await waitFor(B, () => !window.pokecraft.friendGames.active, null, 8000) && await said(B, /Dad is not playing any more\. The game is over\./), 'the leader\'s game is gone without a word: Kid\'s game asks and stops ("Dad is not playing any more.")');
+    await undrop(A);
+    // d) the last word (time is up, who won) never arrives: it is said again
+    await A.waitForTimeout(1200);
+    await invite(A, B, 'tag');
+    await both(A, B, () => window.pokecraft.friendGames.active);
+    await quiet(B);
+    await drop(A, 'g:state', 1);
+    await A.evaluate(async () => { const m = await import('/src/tagrules.js'), r = window.pokecraft.friendGames.play.round; m.TAG.time = r.t + 2; });
+    await B.evaluate(async () => { const m = await import('/src/tagrules.js'); m.TAG.time = 1; });
+    t.ok(await waitFor(A, () => !window.pokecraft.friendGames.active, null, 10000) && await A.evaluate(() => window.__dropped.length === 1), 'time is up on Dad\'s side and his last word is lost');
+    t.ok(await waitFor(B, () => !window.pokecraft.friendGames.active, null, 8000) && await said(B, /Time's up! Dad was IT for \d+ s, Kid for \d+ s\./) && await said(B, /wins! 🏆 Good game!|It's a draw/), 'Kid still hears the result a moment later');
+    await undrop(A);
+    await A.evaluate(SHORT); await B.evaluate(SHORT);
+    // e) the friend goes silent (a sleeping tablet): the leader stops by itself
+    await A.waitForTimeout(1200);
+    await A.evaluate(() => import('/src/friendgames.js').then(m => { m.PLAY.lost = 4; }));
+    await invite(A, B, 'tag');
+    await both(A, B, () => window.pokecraft.friendGames.active);
+    await quiet(A);
+    await drop(B, 'pong');
+    t.ok(await waitFor(A, () => !window.pokecraft.friendGames.active, null, 12000) && await said(A, /Lost touch with Kid\. The game is over\./), 'a friend who stops answering: Dad\'s game ends ("Lost touch with Kid.")');
+    await undrop(B);
+    t.ok(await waitFor(B, () => !window.pokecraft.friendGames.active, null, 10000), 'and Kid\'s game ends too when it asks');
+    await A.evaluate(() => import('/src/friendgames.js').then(m => { m.PLAY.lost = 10; }));
+    await A.waitForTimeout(1200);
+
     // busy; a leader who goes quiet; leaving
     await standAt(A, 0); await standAt(B, 4);
     await B.evaluate(() => { window.pokecraft.duels.incoming = { id: 'x', from: 'zz', name: 'Zed', team: [], seed: 1, timer: setTimeout(() => {}, 100) }; });
@@ -405,6 +503,28 @@ export default async function ({ browser, base, t }) {
     await B.waitForTimeout(2500);
     await B.evaluate(() => window.__steps(45)); // a resting ball is sent again every 2 s
     t.ok(await waitFor(A, bb => { window.__steps(1); const b = window.__ball(); return Math.hypot(b[0] - bb[0], b[2] - bb[2]) < 0.05; }, await B.evaluate(() => window.__ball()), 15000), 'at rest the ball is in the same place on both screens');
+    // a ball never goes through the friend (owner 2026-11-27): Kid stands 2.5 blocks in front of Dad's hard kick
+    await B.evaluate(() => {
+      const g = window.pokecraft, S = window.__S, p = g.player;
+      p.pos.set(63.5, 11, 162); p.vel.set(0, 0, 0);
+      window.__maxX = -99;
+      if (!S.__u) { S.__u = S.update.bind(S); S.update = dt => { S.__u(dt); if (g.friendGames.play?.ball) window.__maxX = Math.max(window.__maxX, g.friendGames.play.ball.pos.x); }; }
+    });
+    await waitFor(A, () => Math.abs([...window.pokecraft.mp.others.values()][0].pos.x - 63.5) < 0.03);
+    const wall = await A.evaluate(() => {
+      const g = window.pokecraft, m = g.friendGames.play, S = window.__S, p = g.player;
+      m.ball.reset([61, 11.401, 162]); m.shared.take();
+      p.pos.set(59.6, 11, 162); p.vel.set(0, 0, 0); p.yaw = -Math.PI / 2; p.pitch = 0;
+      g.gymLive.use(p); S.held.t0 = S.t - 0.6; g.gymLive.release(p);
+      const v = m.ball.vel.x;
+      let max = -99;
+      for (let i = 0; i < 50; i++) { S.update(0.05); max = Math.max(max, m.ball.pos.x); }
+      return { v, max, blocks: m.info().blocks, vx: m.ball.vel.x };
+    });
+    t.ok(Math.abs(wall.v - 14) < 0.01 && wall.blocks >= 1 && wall.max < 63.5 - 0.7, `Dad kicks hard at Kid from 2.5 blocks: on Dad's screen the ball bounces off Kid (it gets to x ${wall.max.toFixed(2)}, Kid stands at 63.5)`);
+    await waitFor(B, () => window.pokecraft.friendGames.state().info.q > 1001, null, 10000);
+    const wallB = await B.evaluate(() => { window.__steps(60); return { max: window.__maxX, info: window.pokecraft.friendGames.state().info }; });
+    t.ok(wallB.max < 63.5 && wallB.max > 60, `and on Kid's screen it never passes Kid either (it gets to x ${wallB.max.toFixed(2)})`);
     // Dad (the leader) takes it and scores with a real hold and let go
     const kick = (page, x, dir, hold = 0.6) => page.evaluate(([x, dir, hold]) => {
       const g = window.pokecraft, m = g.friendGames.play, S = window.__S, p = g.player;

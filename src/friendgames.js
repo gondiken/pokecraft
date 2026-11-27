@@ -3,12 +3,18 @@
 // One play-together event, `play` (old games never subscribe to it; PLAY.VERSION is checked in the ask). The inviter LEADS
 // (the clock and the score are the leader's, like hide and seek). Nothing is saved; no world block changes.
 //
+// Both sides must always agree that a game is on (owner 2026-11-27: "he looked like IT on my screen" while his tablet was not
+// playing). So no single message is trusted to arrive: the leader's heartbeat carries the start again (a lost `start` heals),
+// the friend answers every heartbeat (`pong`: a leader left alone notices), anything that arrives for a game this side does
+// not have is answered with "gone" (the other side stops within a second or two), and a game that ended by its own rules
+// repeats its last word for a while (a lost result still arrives).
+//
 // A game KIND is one entry in FRIEND_GAMES (addFriendGame): { id, icon, name, sub, ask(name), shown(game), whyNot(game, avatar),
 // make(game, session) -> a FriendGame }. A new game for two = one FriendGame subclass + one addFriendGame. Nothing here knows a kind.
 import { sound } from './sound.js';
 import { el } from './util.js';
 
-export const PLAY = { VERSION: 1, answer: 30, beat: 1, lost: 10, near: 30, toastGap: 3 };
+export const PLAY = { VERSION: 2, answer: 30, beat: 1, lost: 10, probe: 2.5, tomb: 30, near: 30, toastGap: 3 };
 export const FRIEND_GAMES = {}; // id -> def, in the friend menu's order
 export const addFriendGame = def => { FRIEND_GAMES[def.id] = def; return def; };
 
@@ -32,6 +38,7 @@ export class FriendGame {
   start() {}                                      // both: begin with the start data
   message() {}                                    // a `say` from the partner
   beat() { return null; }                         // leader: the whole state once a second (a lost message heals)
+  farewell() { return null; }                     // leader: the last word of a finished game (`say` data), repeated if the friend missed it
   heard() {}                                      // the other side: that state
   update() {}                                     // every frame (dt = real seconds)
   tick() {}                                       // twice a second, also while the game is paused
@@ -50,6 +57,8 @@ export function createFriendGames(game) {
   let asking = null;     // { id, kind, to, name, timer }
   let incoming = null;   // { id, kind, from, name, timer, onYes }
   let pending = null;    // { id, kind, from, name, timer }: I said yes and wait for the start
+  let tomb = null;       // { id, partner, data, at }: the game that just ended by its own rules
+  const goneAt = {};     // id -> when I last answered "gone" for it
   let last = performance.now(), hudAt = 0;
   const lastToast = { battle: 0, ride: 0 };
   const now = () => performance.now();
@@ -71,7 +80,7 @@ export function createFriendGames(game) {
 
   function open(kind, id, leader, partner, partnerName) {
     const def = FRIEND_GAMES[kind];
-    s = { id, kind, def, leader, partner, partnerName, heardAt: now(), beatAt: now(), play: null,
+    s = { id, kind, def, leader, partner, partnerName, heardAt: now(), beatAt: now(), probeAt: now(), start: null, play: null,
       send: data => send(partner, { ...data, id }),
       finish: text => close('done', text) };
     s.play = def.make(game, s);
@@ -86,6 +95,7 @@ export function createFriendGames(game) {
     if (!s) return;
     const old = s;
     s = null;
+    if (why === 'done') { let data = null; try { data = old.play.farewell(); } catch (e) { console.error(e); } tomb = { id: old.id, partner: old.partner, data, at: now() }; }
     try { old.play.end(why); } catch (e) { console.error(e); }
     game.ui.setHideSeek(null);
     if (text) game.ui.toast(text);
@@ -103,6 +113,16 @@ export function createFriendGames(game) {
       pending = null;
       game.ui.toast("Couldn't start the game. Try again!");
     }, 10000) };
+  }
+
+  // Something arrived for a game I am not in: say so (at most once a second), so the other side never plays on alone.
+  // A game that just ended by its own rules repeats its last word instead (the result).
+  function gone(p) {
+    const t = now();
+    if (!p.id || t - (goneAt[p.id] || 0) < 1000) return;
+    goneAt[p.id] = t;
+    if (tomb && tomb.id === p.id && tomb.partner === p.from && t - tomb.at < PLAY.tomb * 1000 && tomb.data) send(p.from, { ...tomb.data, type: 'g', id: p.id });
+    else send(p.from, { type: 'stop', id: p.id, why: 'gone' });
   }
 
   function decline() {
@@ -180,7 +200,7 @@ export function createFriendGames(game) {
         if (p.v !== PLAY.VERSION) { game.ui.toast(`${p.name} needs to reload the game to play (it was updated).`); return; }
         if (!av || game.inBattle || s || whyNot(def, av)) { send(p.from, { type: 'stop', id: p.id, why: 'busy' }); return; }
         open(a.kind, p.id, true, p.from, p.name);
-        const data = s.play.setup();
+        const data = s.start = s.play.setup();
         send(p.from, { type: 'start', id: p.id, kind: a.kind, data });
         s.play.start(data);
       } else if (t === 'start') {
@@ -190,16 +210,26 @@ export function createFriendGames(game) {
         open(p.kind, p.id, false, p.from, p.name);
         s.play.start(p.data || {});
       } else if (t === 'beat') {
-        if (!s || s.id !== p.id || s.leader || p.from !== s.partner) return;
+        if (!s && pending && pending.id === p.id && pending.from === p.from && pending.kind === p.kind) { // the `start` got lost: this is it
+          clearTimeout(pending.timer);
+          pending = null;
+          open(p.kind, p.id, false, p.from, p.name);
+          s.play.start(p.start || {});
+        }
+        if (!s || s.id !== p.id || s.leader || p.from !== s.partner) { gone(p); return; }
         s.heardAt = now();
+        send(s.partner, { type: 'pong', id: s.id });
         s.play.heard(p.data || {});
+      } else if (t === 'pong') {
+        if (!s || s.id !== p.id || p.from !== s.partner) { gone(p); return; }
+        s.heardAt = now();
       } else if (t === 'g') {
-        if (!s || s.id !== p.id || p.from !== s.partner) return;
+        if (!s || s.id !== p.id || p.from !== s.partner) { if (!(pending && pending.id === p.id)) gone(p); return; }
         s.heardAt = now();
         s.play.message(p);
       } else if (t === 'stop') {
         if (pending?.id === p.id) { clearTimeout(pending.timer); pending = null; game.ui.toast(`${p.name} is busy right now. Try again soon!`); }
-        if (s && s.id === p.id && p.from === s.partner) close('stopped', `${s.partnerName} stopped the game.`);
+        if (s && s.id === p.id && p.from === s.partner) close('stopped', p.why === 'gone' ? `${s.partnerName} is not playing any more. The game is over.` : `${s.partnerName} stopped the game.`);
       }
     },
 
@@ -210,9 +240,10 @@ export function createFriendGames(game) {
       const t = now();
       s.play.tick();
       if (!s) return;
-      if (s.leader) {
-        if (t - s.beatAt >= PLAY.beat * 1000) { s.beatAt = t; const data = s.play.beat(); if (data) send(s.partner, { type: 'beat', id: s.id, data }); }
-      } else if (t - s.heardAt > PLAY.lost * 1000) close('lost', `Lost touch with ${s.partnerName}. The game is over.`);
+      if (t - s.heardAt > PLAY.lost * 1000) { close('lost', `Lost touch with ${s.partnerName}. The game is over.`); return; }
+      if (s.leader) { // the heartbeat carries the start too: a friend who missed it joins on the next one
+        if (t - s.beatAt >= PLAY.beat * 1000) { s.beatAt = t; send(s.partner, { type: 'beat', id: s.id, kind: s.kind, start: s.start, data: s.play.beat() || {} }); }
+      } else if (t - s.heardAt > PLAY.probe * 1000 && t - s.probeAt > PLAY.probe * 1000) { s.probeAt = t; send(s.partner, { type: 'pong', id: s.id }); } // quiet for a while: is the leader still playing?
     },
 
     update() {
@@ -260,7 +291,7 @@ export function createFriendGames(game) {
       for (const x of [asking, incoming, pending]) if (x) clearTimeout(x.timer);
       closeIncomingBox();
       asking = incoming = pending = null;
-      close('reset');
+      close('reset'); // (said by nobody: the friend's next message is answered "gone", or the friend is told you left)
     },
 
     // For tests.

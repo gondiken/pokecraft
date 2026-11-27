@@ -7,7 +7,7 @@ export const TAG = {
   freeze: 3,        // the new IT counts to three (cannot walk)
   reach: 1.3, tall: 2.2, // a touch: this close side to side, this close in height
   tap: 3,           // looking at / tapping them counts this close
-  radius: 28,       // the play area round the place it began
+  radius: 100,      // the play area round the place it began (owner 2026-11-27: "much much larger"; it was 28)
   boost: 1.1,       // IT runs this much faster, so a chase always ends
   fenceToast: 3,
 };
