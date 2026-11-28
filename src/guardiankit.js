@@ -280,6 +280,8 @@ export function kitName(d) {
   const [b, h, , , t, k] = d.p;
   return HEAD_START[h] + (BACK_END[k] || TAIL_END[t] || BODY_END[b]);
 }
+// The name endings a design's back, tail and body give (wizardcrew.js puts a word in front of one).
+export const kitEnds = d => [BACK_END[d.p[5]], TAIL_END[d.p[4]], BODY_END[d.p[0]]].filter(Boolean);
 const SYL_A = ['Zi', 'Bo', 'Lu', 'Ki', 'Mo', 'Pa', 'Ri', 'Su', 'Ta', 'Wo', 'Fe', 'Ny', 'Glo', 'Spa', 'Twi', 'Bru'];
 const SYL_B = ['ppy', 'nix', 'zle', 'mo', 'rri', 'blo', 'nka', 'sh', 'xel', 'ffin', 'lla', 'ro', 'by', 'tto'];
 const SYL_C = ['', '', 'o', 'a', 'kins', 'zu', 'ly'];

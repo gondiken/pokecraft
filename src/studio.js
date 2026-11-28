@@ -5,17 +5,18 @@
 // your guardian on his island in the Swirl (`update`). The battle is the ordinary boss battle (the last creature hangs on once, like Zenithar).
 // Nothing here is a block; nothing is sent in play together (every friend has their own ending).
 import * as THREE from 'three';
-import { SPECIES, MOVES, nameOf, makeCreature, buildModel, animateModel, disposeModel, movesWith, MAX_LEVEL } from './species.js';
+import { SPECIES, MOVES, nameOf, makeCreature, buildModel, animateModel, disposeModel, MAX_LEVEL } from './species.js';
 import { Fx } from './fx.js'; // owner 2026-11-09: the Attack Studio plays an attack in the turning picture
 import { KIND_NAME, kindOf, RUSH } from './movekinds.js'; // owner 2026-11-10: each attack designed inside its kind
 import { PREVIEW } from './comingsoon.js';
-import { rematchMoves, rematchCubes } from './rematch.js';
+import { rematchCubes } from './rematch.js';
 import { sound } from './sound.js';
 import { el } from './util.js';
 import { PAINTS, DESIGNS, PAINT_SLOTS, guardianLevel } from './custom.js';
 import { SLOTS, SLOT_LABELS, SLOT_ICONS, KIT, KIT_COLOURS, BARE, NAME_MAX, cleanDesign, kitName, randomName, flies, lookOf } from './guardiankit.js';
 import { ABILITIES, CHOOSABLE, cleanChoice } from './abilities.js'; // chapter 3 step B: the guardian's chosen ability
 import { abilityIcon } from './abilitychips.js';
+import { wizardCrew } from './wizardcrew.js'; // owner 2026-11-28: his team is painted anew for every battle
 import { floorKey, WORDS, wizardTeam, DEFAULT_GROUPS, starCount, towerStand } from './wizardtower.js';
 import { bridgeDone } from './pictureworlds.js';
 
@@ -61,12 +62,11 @@ export function loadStudio(saved) {
 
 // The Wizard's team for a battle: [[species, level, moves]] (pure). `wins` = null for the first battle, else the rematch wins so far (+5 levels each,
 // from the third rematch a big move too, like the gym rematches).
-export function battleTeam(wins = null) {
-  const w = wins ?? 0;
-  return wizardTeam(w).map(m => {
-    const base = movesWith(m.species, m.level, ...m.extra);
-    return [m.species, m.level, rematchMoves(null, w + 1, m.species, m.level, base)];
-  });
+// Owner 2026-11-28: a new painted team every battle (wizardcrew.js): six `guardian`s with random designs, names and moves; the levels and
+// their rematch ladder stay WIZARD_TEAM's. Each entry: [species, level, moves, design]. `seed` = the same team again (tests).
+export function battleTeam(wins = null, seed = (Math.random() * 4294967296) >>> 0) {
+  const w = wins ?? 0, crew = wizardCrew(seed, w);
+  return wizardTeam(w).map((m, i) => ['guardian', m.level, crew[i].moves, crew[i].design]);
 }
 export const topLevel = team => Math.max(...team.map(t => t[1]));
 
