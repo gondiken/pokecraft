@@ -5,7 +5,7 @@
 // Like pong: each player defends their whole end. Your hand mirror slides on your rail and tilts by the way you look, exactly as in the
 // single-player game; a ball that gets past your mirror is a point for the other. The side mirrors bounce as ever; both ends are open (no back
 // mirror, no goal mouth) and there is no spinner. A serve comes from the middle toward the one who lost the last point. The ball starts at round
-// 1's speed and gets a little faster every hit (DUEL_RULES.speedUp, up to speedCap: a long rally ends, a ball
+// 3's speed and gets faster every hit (DUEL_RULES.speedUp, up to speedCap: a long rally ends, a ball
 // sent across fast outruns a mirror that only follows the ball with its eyes). First to 3.
 //
 // Coordinates: the court's own u (0..16 across, x = 20 + u) and v (0..30 along, z = 117.5 - v). Side 0 (the leader) stands at v 1.5 (the
@@ -23,7 +23,9 @@ const R = COURT_RULES;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 export const DUEL_RULES = {
-  ball: R.rounds[0].ball, speedUp: 1.05, speedCap: 1.6, need: 3, ready: 2.5, pause: 1.4, serveV: R.l / 2, serveSpread: 4.5, maxDt: 1,
+  // owner 2026-11-28 "the light needs to be faster for us to have fun": round 3's ball (8.2; it was round 1's 6.0), x1.08 a hit (was 1.05) up to
+  // x1.75 = 14.4 blocks/s (was x1.6 of 6 = 9.6); the mirror slides as in the single-player game (a faster one measured no better, tests/bounceduelbots.mjs)
+  ball: R.rounds[2].ball, speedUp: 1.08, speedCap: 1.75, slide: R.slideSpeed, need: 3, ready: 2.5, pause: 1.4, serveV: R.l / 2, serveSpread: 4.5, maxDt: 1,
   lines: [R.mirrorV, R.l - R.mirrorV], outs: [R.r, R.l - R.r], // where each side's mirror stands, where a ball past it is out
   open: [-Infinity, Infinity], // advanceBall's "goal mouth": the whole back, so the far end never bounces
 };
@@ -72,7 +74,7 @@ export class DuelCourt {
     for (const side of [0, 1]) {
       const inp = this.in[side];
       if (!inp) continue;
-      this.m[side] = clamp(this.m[side] + clamp(inp.slide || 0, -1, 1) * R.slideSpeed * h, R.rail[0], R.rail[1]);
+      this.m[side] = clamp(this.m[side] + clamp(inp.slide || 0, -1, 1) * DUEL_RULES.slide * h, R.rail[0], R.rail[1]);
       this.tilt[side] = clamp(inp.tilt || 0, -R.tiltMax, R.tiltMax);
     }
     if (this.auto && (this.phase === 'ready' || this.phase === 'pause')) { this.wait -= h; if (this.wait <= 0) this.serve(this.n + 1, this.to, ev); return; }
@@ -94,7 +96,7 @@ export class DuelCourt {
     b.du = side ? -d[0] : d[0]; b.dv = side ? -d[1] : d[1];
     b.v = DUEL_RULES.lines[side] + (side ? -0.001 : 0.001);
     b.s = Math.min(b.s * DUEL_RULES.speedUp, this.base * DUEL_RULES.speedCap);
-    if (this.decides[side]) { this.q++; this.own = side; this.hits++; this.rally++; ev.push({ type: 'hit', side, tilt: this.tilt[side], u: b.u }); }
+    if (this.decides[side]) { this.q++; this.own = side; this.hits++; this.rally++; ev.push({ type: 'hit', side, tilt: this.tilt[side], u: b.u, rally: this.rally }); }
     else ev.push({ type: 'guess', side, u: b.u });
   }
   // the ball got past side's mirror
@@ -102,7 +104,7 @@ export class DuelCourt {
     this.dead = this.q;
     if (!this.decides[side]) { this.phase = 'wait'; ev.push({ type: 'gone', side }); return; } // (their computer says)
     this.ball = null; this.phase = 'idle';
-    ev.push({ type: 'miss', side, q: this.q });
+    ev.push({ type: 'miss', side, q: this.q, rally: this.rally });
     if (this.auto) this.point(1 - side, ev);
   }
   // a point for `side` (auto: the court's own score; bounceduel.js: the leader's word)
