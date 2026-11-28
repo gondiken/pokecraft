@@ -2,7 +2,7 @@
 // other blocks on a Shield Stone exactly as in the single-player Shield Up! (the stick points the shield, Jump holds it over your head);
 // then they swap. The thrower stands on the other stone, LOOKS at a catapult and presses Throw! (looking high up = a sky pumpkin); the
 // catapult tells and throws with the single-player round 2's times, and the next throw can come only DUEL_SHIELD.cool s later. A block is a
-// point for the defender, a splat a point for the thrower; 5 throws each way, level = one more each, still level = a draw. The rules are
+// point for the defender, a splat a point for the thrower; 8 throws each way (owner 2026-11-28: "a bit longer"), level = one more each, still level = a draw. The rules are
 // siegeduelrules.js (pure); castlelive.js draws the throws, the catapult arms, the lamp ring, the arrows round the crosshair and the goo
 // from siegeView() (its `setDuel` hook). Nothing is saved; the Castle's own keys (shield1..3) and gates are never touched.
 //
@@ -130,12 +130,13 @@ export class ShieldDuel extends FriendGame {
   /* ---- turns ---- */
   startTurn(t) {
     const { def, n } = turnOf(t);
+    (this.turnsSeen ||= []).push(t);
     this.t = t; this.role = def === this.side ? 'def' : 'throw'; this.phase = 'turn';
     this.turn = new ShieldTurn({ t, n, decides: this.role === 'def' });
     this.clock = 0; this.last = null; this.thrown = 0; this.idle = 0; this.pendTh = {};
     this.toStone(this.role);
     sound.play('trumpet');
-    const extra = t > 2 ? ' One more each!' : '';
+    const extra = t > 2 ? ` It's level, ${this.scoreLine()}! One more throw each.` : '';
     if (this.role === 'def') this.toast(`🛡️ Block ${this.partnerName}'s pumpkins! Point your shield at them.${extra}`);
     else this.toast(`🎯 Your turn to throw! Look at a catapult and press Throw! Look up high for a sky pumpkin.${extra}`);
   }
@@ -156,17 +157,20 @@ export class ShieldDuel extends FriendGame {
   count(t, i, r) {
     (this.lastR ||= {})[`${t}:${i}`] ??= r;
     if (!this.sc.add(t, i, r)) { this.say({ k: 'score', t, i, r, score: this.sc.score }); return; } // (said again: the last word was lost)
+    (this.log ||= []).push([t, i, r]); // every throw so far (at most 18): the heartbeat and the last word carry it, so no screen misses one
     this.say({ k: 'score', t, i, r, score: this.sc.score });
     this.show(t, i, r);
     if (this.sc.turnDone(t) && t === this.t) { this.phase = 'swap'; this.swapT = DUEL_SHIELD.swap; }
   }
-  show(t, i, r) {
+  show(t, i, r, quiet = false) {
     const key = `${t}:${i}`;
-    if (this.shown.has(key)) return;
+    if (this.shown.has(key) || !['block', 'perfect', 'splat'].includes(r)) return;
     this.shown.add(key);
-    delete this.pendTh[i]; delete this.pendRes[key];
+    if (t === this.t) delete this.pendTh[i];
+    delete this.pendRes[key];
     const def = turnOf(t).def, block = r !== 'splat';
     this.counts[block ? 'block' : 'splat']++;
+    if (quiet) return; // (caught up from the leader's list: no sounds for old throws)
     if (def === this.side) { if (block) sound.play('shieldclang'); }
     else { sound.play(block ? 'shieldclang' : 'pumpkinsplat'); this.toast(block ? `🛡️ ${this.partnerName} blocked it! +1 for ${this.partnerName}` : '🎃 Splat! +1 for you!'); }
     if (def === this.side && !block && !this.told.has('splat')) { this.told.add('splat'); this.toast(`🎃 Splat! +1 for ${this.partnerName}. Put the blue shield on the arrow!`); }
@@ -187,13 +191,19 @@ export class ShieldDuel extends FriendGame {
     else if (p.k === 'res' && this.leader) { if (Number.isInteger(p.t) && Number.isInteger(p.i)) this.count(p.t, p.i, p.r); }
     else if (p.k === 'score' && !this.leader) { this.sc.load(p.score); this.sc.seen.add(`${p.t}:${p.i}`); this.show(p.t, p.i, p.r); }
     else if (p.k === 'turn' && !this.leader) { if (Number.isInteger(p.t) && p.t > this.t) { this.sc.load(p.score); this.startTurn(p.t); } }
-    else if (p.k === 'over' && !this.leader) { this.sc.load(p.score); this.over(p.win); }
+    else if (p.k === 'over' && !this.leader) { this.catchUp(p.log); this.sc.load(p.score); this.over(p.win); } // (only the leader's word ends the game)
   }
-  beat() { return { t: this.t, score: this.sc?.score, ph: this.phase }; }
-  farewell() { return this.leader && this.result != null ? { k: 'over', score: this.sc.score, win: this.result } : null; }
+  // the friend: the leader's list of every counted throw (a lost `score` never leaves a throw out)
+  catchUp(log) {
+    if (!Array.isArray(log)) return;
+    for (const e of log) if (Array.isArray(e) && Number.isInteger(e[0]) && Number.isInteger(e[1])) { this.sc.seen.add(`${e[0]}:${e[1]}`); this.show(e[0], e[1], e[2], e[0] < this.t || this.done); }
+  }
+  beat() { return { t: this.t, score: this.sc?.score, ph: this.phase, log: this.log || [] }; }
+  farewell() { return this.leader && this.result != null ? { k: 'over', score: this.sc.score, win: this.result, log: this.log || [] } : null; }
   heard(d) {
     if (!this.sc || this.done) return;
     this.sc.load(d.score);
+    this.catchUp(d.log);
     if (Number.isInteger(d.t) && d.t > this.t) this.startTurn(d.t);
   }
   tick() { // until counted: my throws again (thrower), my word again (defender)
@@ -217,7 +227,7 @@ export class ShieldDuel extends FriendGame {
       this.swapT -= dt;
       if (this.swapT <= 0) {
         const win = this.sc.after(this.t);
-        if (win != null) { this.result = win; this.say({ k: 'over', score: this.sc.score, win }); this.over(win); return; }
+        if (win != null) { this.result = win; this.say({ k: 'over', score: this.sc.score, win, log: this.log || [] }); this.over(win); return; }
         this.say({ k: 'turn', t: this.t + 1, score: this.sc.score }); this.startTurn(this.t + 1);
       }
     }
@@ -285,7 +295,7 @@ export class ShieldDuel extends FriendGame {
   get noRide() { return 'No riding in Shield Up!'; }
   info() {
     return { phase: this.phase, side: this.side, t: this.t, role: this.role, score: [...(this.sc?.score || [0, 0])], thrown: this.thrown, inTurn: this.turn ? this.turn.plan.throws.length : 0,
-      results: this.turn ? this.turn.results.slice() : [], counts: { ...this.counts }, shield: { ...(this.input ?? this.shieldIn) }, theirShield: { ...this.theirShield },
+      results: this.turn ? this.turn.results.slice() : [], counts: { ...this.counts }, perTurn: [...(this.shown || [])].reduce((o, k) => { const t = k.split(':')[0]; o[t] = (o[t] || 0) + 1; return o; }, {}), turnsSeen: this.turnsSeen?.slice() ?? [], shield: { ...(this.input ?? this.shieldIn) }, theirShield: { ...this.theirShield },
       onStone: this.game.player.carry === (this.role === 'throw' ? this.thrObj : this.defObj), can: this.turn ? this.canThrow() : false, crewAway: (this.crew || []).length, meshes: (this.meshes || []).length };
   }
 }

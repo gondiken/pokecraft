@@ -17,7 +17,7 @@ import { SIEGE, judge, dirTo, spotPos, throwAt } from './siege.js';
 
 const RANK = { splat: 0, block: 1, perfect: 2 };
 export const DUEL_SHIELD = {
-  throws: 5, extra: 1, cool: 0.8, idle: 8, ready: 2.5, swap: 2.6, skyPitch: 0.6, round: 1,
+  throws: 8, extra: 1, cool: 0.8, idle: 8, ready: 2.5, swap: 2.6, skyPitch: 0.6, round: 1,
   defStone: 0, throwStone: 1, dt: 1 / 120, maxDt: 1,
 };
 // The turns: who defends and how many throws. Turn 1 = the friend (side 1) defends.

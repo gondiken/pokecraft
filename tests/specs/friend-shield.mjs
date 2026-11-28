@@ -38,6 +38,7 @@ const arm = page => page.evaluate(async () => {
           else { play.input = null; const w = window.__made.throw({ time: play.clock, shield: play.theirShield, thrown: play.thrown, can: play.canThrow() }); if (w) play.throwNow(w); }
         } else play.input = null;
         pu(dt);
+        try { window.__lastInfo = play.info(); } catch {}
       };
     }
     up();
@@ -69,10 +70,10 @@ export default async function ({ browser, base, t }) {
     t.ok(late(60) === 'perfect' && late(20) !== undefined, `a shield turned a moment late still counts (SIEGE.grace: ${late(60)} at 60 fps, ${late(20)} at 20)`);
     // the score and the turns
     const sc = new R.ShieldScore();
-    for (let i = 0; i < 5; i++) sc.add(1, i, i < 3 ? 'block' : 'splat');
-    t.ok(sc.score.join() === '2,3' && sc.turnDone(1) && sc.after(1) === null && !sc.add(1, 0, 'block') && R.turnOf(1).def === 1 && R.turnOf(2).def === 0 && R.turnOf(3).n === 1, 'one point a throw (a block to the defender, a splat to the thrower), counted once; the friend blocks first');
-    for (let i = 0; i < 5; i++) sc.add(2, i, i < 3 ? 'block' : 'splat');
-    t.ok(sc.score.join() === '5,5' && sc.after(2) === null, 'level after both turns: one more throw each');
+    for (let i = 0; i < D.throws; i++) sc.add(1, i, i < 3 ? 'block' : 'splat');
+    t.ok(D.throws === 8 && sc.score.join() === `${D.throws - 3},3` && sc.turnDone(1) && sc.after(1) === null && !sc.add(1, 0, 'block') && R.turnOf(1).def === 1 && R.turnOf(2).def === 0 && R.turnOf(3).n === 1, `${D.throws} throws a turn (owner 2026-11-28: "a bit longer"), one point a throw (a block to the defender, a splat to the thrower), counted once; the friend blocks first`);
+    for (let i = 0; i < D.throws; i++) sc.add(2, i, i < 3 ? 'block' : 'splat');
+    t.ok(sc.score.join() === `${D.throws},${D.throws}` && sc.after(2) === null, 'level after both turns: one more throw each');
     sc.add(3, 0, 'block'); sc.add(4, 0, 'block');
     t.ok(sc.after(4) === 'draw', 'still level: a draw');
     // the model players
@@ -100,16 +101,19 @@ export default async function ({ browser, base, t }) {
       t.ok(w.results.every(r => /Dad wins/.test(r)) && w.results[0] === w.results[1] && w.scores[0] === w.scores[1] && w2.results.every(r => /Kid wins/.test(r)) && w2.results[0] === w2.results[1],
         `${fps} fps, a ${lag} s line: both computers agree on every throw and on the winner (${w.results[0]} / ${w2.results[0]})`);
       const d = await shieldPair({ players: [['skilled', 'skilled'], ['skilled', 'skilled']], fps, lag });
-      t.ok(d.results.every(r => /A draw, 6 : 6/.test(r)), `${fps} fps, a ${lag} s line: two skilled players block everything: a draw after one more each (${d.results[0]})`);
+      t.ok(d.results.every(r => new RegExp(`A draw, ${D.throws + 1} : ${D.throws + 1}`).test(r)), `${fps} fps, a ${lag} s line: two skilled players block everything: a draw after one more each (${d.results[0]})`);
     }
     const P = [['skilled', 'skilled'], ['kid', 'spam'], ['still', 'spam'], ['kid', 'lazy'], ['jumpy', 'same']], odd = [];
-    let games = 0;
+    let games = 0, ties = 0;
     for (const fps of [60, 20]) for (const lag of [0, 0.1, 0.3, 0.8]) for (const drop of [0, 0.2, 0.4]) for (let k = 1; k <= 4; k++) {
       const players = [P[k % 5], P[(k * 2 + 1) % 5]], r = await shieldPair({ players, fps, lag, drop, lineSeed: k * 91 + Math.round(lag * 1000) + Math.round(drop * 10) });
       games++;
-      if (!(r.results[0] && r.results[0] === r.results[1] && r.scores[0] === r.scores[1])) odd.push(`${fps} fps ${lag} s ${drop} lost ${players.join(' v ')}: ${r.results.join(' / ')}`);
+      // owner 2026-11-28 ("first round we threw 5 but the second round we just threw 1"): every turn has its full number of throws on BOTH screens
+      const turns = r.info.map(i => i.turnsSeen), full = r.info.every(i => turns[0].every(tt => i.perTurn[tt] === R.turnOf(tt).n)) && JSON.stringify(turns[0]) === JSON.stringify(turns[1]) && turns[0][0] === 1 && turns[0][1] === 2;
+      if (turns[0].length > 2) ties++;
+      if (!(full && r.results[0] && r.results[0] === r.results[1] && r.scores[0] === r.scores[1])) odd.push(`${fps} fps ${lag} s ${drop} lost ${players.join(' v ')}: ${r.results.join(' / ')}`);
     }
-    t.ok(!odd.length, `${games} games at 60 / 20 fps, lines of 0-0.8 s, up to 40 % lost: both screens always end with the same winner and score ${odd.slice(0, 3).join(' | ')}`);
+    t.ok(!odd.length, `${games} games at 60 / 20 fps, lines of 0-0.8 s, up to 40 % lost: both screens always end with the same winner and score, and every turn shows all its throws on both screens (${D.throws}, ${D.throws}, then 1 and 1 only when level: ${ties} games) ${odd.slice(0, 3).join(' | ')}`);
     const lossy = await shieldPair({ players: [['skilled', 'skilled'], ['kid', 'lazy']], fps: 30, lag: 0.2, drop: 0.25 });
     t.ok(lossy.results.every(r => /Dad wins/.test(r)) && lossy.results[0] === lossy.results[1] && lossy.lost > 10 && JSON.stringify(lossy.info[0].counts) === JSON.stringify(lossy.info[1].counts),
       `a quarter of the messages lost: the throws, the words and the heartbeat still bring both to the same end, every throw shown on both (${lossy.lost} lost, ${lossy.results[0]})`);
@@ -175,6 +179,8 @@ export default async function ({ browser, base, t }) {
     await setBot(A, ['skilled', 'skilled']); await setBot(B, ['still', 'spam']);
     t.ok(await both(A, B, () => !window.pokecraft.friendGames.active, null, 300000), 'to the end: the game is over on both screens');
     const res = await A.evaluate(() => (window.__toasts || []).find(m => /Good game!/.test(m)));
+    const last = await Promise.all([A, B].map(P => P.evaluate(() => window.__lastInfo)));
+    t.ok(last.every(i => i.turnsSeen[0] === 1 && i.turnsSeen[1] === 2 && i.perTurn[1] === 8 && i.perTurn[2] === 8), `every turn had all 8 throws on both screens (Dad's screen ${JSON.stringify(last[0].perTurn)}, Kid's ${JSON.stringify(last[1].perTurn)})`);
     t.ok(/🛡️ Dad wins \d+ : \d+! Good game!/.test(res) && await heard(B, /🛡️ Dad wins \d+ : \d+! Good game!/), `both hear the winner ("${res}")`);
     const end = await Promise.all([A, B].map(P => P.evaluate(() => {
       const g = window.pokecraft, p = g.player, live = g.gymLive.of('part:castle'), crew = g.npcs.list.filter(n => n.kind === 'crew' && n.def?.boss === 'castle');
