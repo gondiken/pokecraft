@@ -2,7 +2,7 @@
 // other blocks on a Shield Stone exactly as in the single-player Shield Up! (the stick points the shield, Jump holds it over your head);
 // then they swap. The thrower stands on the other stone, LOOKS at a catapult and presses Throw! (looking high up = a sky pumpkin); the
 // catapult tells and throws with the single-player round 2's times, and the next throw can come only DUEL_SHIELD.cool s later. A block is a
-// point for the defender, a splat a point for the thrower; 8 throws each way (owner 2026-11-28: "a bit longer"), level = one more each, still level = a draw. The rules are
+// point for the defender, a splat a point for the thrower; 8 throws each way (owner 2026-11-28: "a bit longer"), level = three more each, still level = a draw. The rules are
 // siegeduelrules.js (pure); castlelive.js draws the throws, the catapult arms, the lamp ring, the arrows round the crosshair and the goo
 // from siegeView() (its `setDuel` hook). Nothing is saved; the Castle's own keys (shield1..3) and gates are never touched.
 //
@@ -136,7 +136,7 @@ export class ShieldDuel extends FriendGame {
     this.clock = 0; this.last = null; this.thrown = 0; this.idle = 0; this.pendTh = {};
     this.toStone(this.role);
     sound.play('trumpet');
-    const extra = t > 2 ? ` It's level, ${this.scoreLine()}! One more throw each.` : '';
+    const extra = t > 2 ? ` It's level, ${this.scoreLine()}! Three more throws each.` : '';
     if (this.role === 'def') this.toast(`🛡️ Block ${this.partnerName}'s pumpkins! Point your shield at them.${extra}`);
     else this.toast(`🎯 Your turn to throw! Look at a catapult and press Throw! Look up high for a sky pumpkin.${extra}`);
   }

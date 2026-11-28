@@ -71,9 +71,9 @@ export default async function ({ browser, base, t }) {
     // the score and the turns
     const sc = new R.ShieldScore();
     for (let i = 0; i < D.throws; i++) sc.add(1, i, i < 3 ? 'block' : 'splat');
-    t.ok(D.throws === 8 && sc.score.join() === `${D.throws - 3},3` && sc.turnDone(1) && sc.after(1) === null && !sc.add(1, 0, 'block') && R.turnOf(1).def === 1 && R.turnOf(2).def === 0 && R.turnOf(3).n === 1, `${D.throws} throws a turn (owner 2026-11-28: "a bit longer"), one point a throw (a block to the defender, a splat to the thrower), counted once; the friend blocks first`);
+    t.ok(D.throws === 8 && sc.score.join() === `${D.throws - 3},3` && sc.turnDone(1) && sc.after(1) === null && !sc.add(1, 0, 'block') && R.turnOf(1).def === 1 && R.turnOf(2).def === 0 && R.turnOf(3).n === D.extra && D.extra === 3, `${D.throws} throws a turn (owner 2026-11-28: "a bit longer"), one point a throw (a block to the defender, a splat to the thrower), counted once; the friend blocks first`);
     for (let i = 0; i < D.throws; i++) sc.add(2, i, i < 3 ? 'block' : 'splat');
-    t.ok(sc.score.join() === `${D.throws},${D.throws}` && sc.after(2) === null, 'level after both turns: one more throw each');
+    t.ok(sc.score.join() === `${D.throws},${D.throws}` && sc.after(2) === null, 'level after both turns: three more throws each');
     sc.add(3, 0, 'block'); sc.add(4, 0, 'block');
     t.ok(sc.after(4) === 'draw', 'still level: a draw');
     // the model players
@@ -101,7 +101,7 @@ export default async function ({ browser, base, t }) {
       t.ok(w.results.every(r => /Dad wins/.test(r)) && w.results[0] === w.results[1] && w.scores[0] === w.scores[1] && w2.results.every(r => /Kid wins/.test(r)) && w2.results[0] === w2.results[1],
         `${fps} fps, a ${lag} s line: both computers agree on every throw and on the winner (${w.results[0]} / ${w2.results[0]})`);
       const d = await shieldPair({ players: [['skilled', 'skilled'], ['skilled', 'skilled']], fps, lag });
-      t.ok(d.results.every(r => new RegExp(`A draw, ${D.throws + 1} : ${D.throws + 1}`).test(r)), `${fps} fps, a ${lag} s line: two skilled players block everything: a draw after one more each (${d.results[0]})`);
+      t.ok(d.results.every(r => new RegExp(`A draw, ${D.throws + D.extra} : ${D.throws + D.extra}`).test(r)), `${fps} fps, a ${lag} s line: two skilled players block everything: a draw after the extra throws (${d.results[0]})`);
     }
     const P = [['skilled', 'skilled'], ['kid', 'spam'], ['still', 'spam'], ['kid', 'lazy'], ['jumpy', 'same']], odd = [];
     let games = 0, ties = 0;
