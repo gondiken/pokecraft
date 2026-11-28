@@ -187,14 +187,14 @@ export class JoustDuel extends FriendGame {
     else if (p.k === 'res' && this.leader) { if (Number.isInteger(p.n) && ['hit', 'clang', 'whoosh'].includes(p.kind)) this.setKind(p.n, this.side, p.kind); }
     else if (p.k === 'go' && !this.leader) { if (Number.isInteger(p.n) && p.n > this.n) this.goPass(p.n); }
     else if (p.k === 'pass' && !this.leader) { this.sc.load(p.score, p.n); if (Array.isArray(p.kinds)) { this.sc.passes[p.n] = p.kinds; this.showPass(p.n, p.kinds); } }
-    else if (p.k === 'over' && !this.leader) { this.sc.load(p.score); this.over(p.win); }
+    else if (p.k === 'over' && !this.leader) { this.heard({ score: p.score, all: p.all }); this.sc.load(p.score); this.over(p.win); } // (only the leader's word ends the game, with the leader's score)
   }
-  beat() { const last = this.sc?.n; return { n: this.n, tau: this.phase === 'pass' ? this.tau : 0, ph: this.phase, score: this.sc?.score, last: last ? { n: last, kinds: this.sc.passes[last] } : null }; }
-  farewell() { const win = this.sc?.winner; return this.leader && win != null ? { k: 'over', score: this.sc.score, win } : null; }
+  beat() { return { n: this.n, tau: this.phase === 'pass' ? this.tau : 0, ph: this.phase, score: this.sc?.score, all: this.sc?.passes }; } // (every pass so far: at most 10)
+  farewell() { const win = this.sc?.winner; return this.leader && win != null ? { k: 'over', score: this.sc.score, win, all: this.sc.passes } : null; }
   heard(d) { // a lost go or pass result heals
     if (!this.sc || this.done) return;
-    this.sc.load(d.score, d.last?.n);
-    if (d.last && Array.isArray(d.last.kinds)) { this.sc.passes[d.last.n] ||= d.last.kinds; this.showPass(d.last.n, d.last.kinds); }
+    this.sc.load(d.score);
+    for (const [k, kinds] of Object.entries(d.all || {})) { const n = +k; if (Number.isInteger(n) && Array.isArray(kinds)) { this.sc.passes[n] ||= kinds; this.sc.n = Math.max(this.sc.n, n); this.showPass(n, kinds); } }
     if (Number.isInteger(d.n) && d.n > this.n) this.goPass(d.n, d.ph === 'pass' ? d.tau || 0 : DUEL_JOUST.meet + DUEL_JOUST.after);
   }
   tick() { // until a pass is counted: my tip again, and (the friend) my word on the leader's lance
@@ -225,7 +225,7 @@ export class JoustDuel extends FriendGame {
       this.restT -= dt;
       if (this.restT <= 0 && this.sc.passes[this.n]) {
         const win = this.sc.winner;
-        if (win != null) { this.say({ k: 'over', score: this.sc.score, win }); this.over(win); return; }
+        if (win != null) { this.say({ k: 'over', score: this.sc.score, win, all: this.sc.passes }); this.over(win); return; }
         this.say({ k: 'go', n: this.n + 1 }); this.goPass(this.n + 1);
       }
     }

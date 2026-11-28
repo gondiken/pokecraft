@@ -102,6 +102,14 @@ export default async function ({ browser, base, t }) {
       const d = await shieldPair({ players: [['skilled', 'skilled'], ['skilled', 'skilled']], fps, lag });
       t.ok(d.results.every(r => /A draw, 6 : 6/.test(r)), `${fps} fps, a ${lag} s line: two skilled players block everything: a draw after one more each (${d.results[0]})`);
     }
+    const P = [['skilled', 'skilled'], ['kid', 'spam'], ['still', 'spam'], ['kid', 'lazy'], ['jumpy', 'same']], odd = [];
+    let games = 0;
+    for (const fps of [60, 20]) for (const lag of [0, 0.1, 0.3, 0.8]) for (const drop of [0, 0.2, 0.4]) for (let k = 1; k <= 4; k++) {
+      const players = [P[k % 5], P[(k * 2 + 1) % 5]], r = await shieldPair({ players, fps, lag, drop, lineSeed: k * 91 + Math.round(lag * 1000) + Math.round(drop * 10) });
+      games++;
+      if (!(r.results[0] && r.results[0] === r.results[1] && r.scores[0] === r.scores[1])) odd.push(`${fps} fps ${lag} s ${drop} lost ${players.join(' v ')}: ${r.results.join(' / ')}`);
+    }
+    t.ok(!odd.length, `${games} games at 60 / 20 fps, lines of 0-0.8 s, up to 40 % lost: both screens always end with the same winner and score ${odd.slice(0, 3).join(' | ')}`);
     const lossy = await shieldPair({ players: [['skilled', 'skilled'], ['kid', 'lazy']], fps: 30, lag: 0.2, drop: 0.25 });
     t.ok(lossy.results.every(r => /Dad wins/.test(r)) && lossy.results[0] === lossy.results[1] && lossy.lost > 10 && JSON.stringify(lossy.info[0].counts) === JSON.stringify(lossy.info[1].counts),
       `a quarter of the messages lost: the throws, the words and the heartbeat still bring both to the same end, every throw shown on both (${lossy.lost} lost, ${lossy.results[0]})`);

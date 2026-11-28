@@ -12,10 +12,10 @@ if (typeof window === 'undefined') {
   globalThis.localStorage ??= { getItem: () => null, setItem() {} };
 }
 
-async function pairOf({ Game, lag, fps, budget, drop, drive, champ = true }) {
+async function pairOf({ Game, lag, fps, budget, drop, drive, champ = true, seed = null, lineSeed = 12345 }) {
   const THREE = await import('three');
   let now = 0, lost = 0, sent = 0;
-  const lossy = (() => { let a = 12345; return () => { a = (Math.imul(a, 1664525) + 1013904223) >>> 0; return a / 4294967296; }; })();
+  const lossy = (() => { let a = lineSeed >>> 0; return () => { a = (Math.imul(a, 1664525) + 1013904223) >>> 0; return a / 4294967296; }; })();
   const sides = [0, 1].map(i => {
     const toasts = [], live = { duel: null, setDuel(d) { this.duel = d; }, callout() {}, setFov() {}, crosshair() {}, splatOn() {} };
     const player = { pos: new THREE.Vector3(80, 11, 140), vel: new THREE.Vector3(), yaw: 0, pitch: 0, carry: null, keys: {}, eye: 1.62 };
@@ -32,6 +32,7 @@ async function pairOf({ Game, lag, fps, budget, drop, drive, champ = true }) {
   }
   const [L, F] = sides;
   const startData = L.play.setup();
+  if (seed != null && 'seed' in startData) startData.seed = seed; // (the game's own seed is random: tests pin it)
   L.play.start(startData);
   F.inbox.push({ at: now + lag, data: { type: 'start', data: startData } });
   const dt = 1 / fps;
@@ -61,22 +62,22 @@ async function pairOf({ Game, lag, fps, budget, drop, drive, champ = true }) {
     info: sides.map(S => S.play.info?.() ?? null), toasts: sides.map(S => S.toasts), players: sides.map(S => S.player) };
 }
 
-export async function joustPair({ bots = ['skilled', 'still'], lag = 0.15, fps = 60, budget = 200, drop = 0 } = {}) {
+export async function joustPair({ bots = ['skilled', 'still'], lag = 0.15, fps = 60, budget = 200, drop = 0, seed = 7, lineSeed } = {}) {
   const { JoustDuel } = await import('../src/joustduel.js');
   const { JDUEL_BOTS } = await import('./joustduelbots.mjs');
   const made = bots.map(b => JDUEL_BOTS[b]());
-  const r = await pairOf({ Game: JoustDuel, lag, fps, budget, drop, drive: (S, dt) => {
+  const r = await pairOf({ Game: JoustDuel, lag, fps, budget, drop, seed, lineSeed, drive: (S, dt) => {
     const pl = S.play;
     pl.input = pl.phase === 'pass' && pl.rider && !pl.rider.met ? made[S.i](pl.rider, pl.plan, S.i, { friendTip: pl.friendTip, dt }) : null;
   } });
   return { ...r, scores: r.sides.map(S => S.play.sc.score.join()), passes: r.sides.map(S => JSON.stringify(S.play.sc.passes)) };
 }
 
-export async function shieldPair({ players = [['skilled', 'skilled'], ['still', 'spam']], lag = 0.15, fps = 60, budget = 300, drop = 0 } = {}) {
+export async function shieldPair({ players = [['skilled', 'skilled'], ['still', 'spam']], lag = 0.15, fps = 60, budget = 300, drop = 0, lineSeed } = {}) {
   const { ShieldDuel } = await import('../src/siegeduel.js');
   const { DEFENDERS, THROWERS } = await import('./siegeduelbots.mjs');
   const made = players.map(([d, t]) => ({ defend: DEFENDERS[d](), throw: THROWERS[t]() }));
-  const r = await pairOf({ Game: ShieldDuel, lag, fps, budget, drop, drive: (S, dt) => {
+  const r = await pairOf({ Game: ShieldDuel, lag, fps, budget, drop, lineSeed, drive: (S, dt) => {
     const pl = S.play, m = made[S.i];
     if (pl.role === 'def' && pl.turn) pl.input = m.defend(pl.turn, dt);
     else if (pl.role === 'throw' && pl.turn) { pl.input = null; const w = m.throw({ time: pl.clock, shield: pl.theirShield, thrown: pl.thrown, can: pl.canThrow() }); if (w) pl.throwNow(w); }

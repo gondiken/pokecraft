@@ -155,13 +155,24 @@ export default async function ({ browser, base, t }) {
     t.ok(J.JOUST.meet.join() === '3.4,3,2.6' && J.JOUST.r.join() === '0.32,0.28,0.26' && J.JOUST.passes === 4, 'the single-player Joust is as it was');
     // two computers with a line in between: the real JoustDuel twice
     const { joustPair } = await import('../castleduelnode.mjs');
+    // (each game pinned to a seed: the game's own seed is random, and a random lance sometimes gets two lucky hits)
+    const agree = r => r.results[0] && r.results[0] === r.results[1] && r.scores[0] === r.scores[1] && r.passes[0] === r.passes[1];
     for (const [fps, lag] of [[60, 0.15], [20, 0.3]]) {
       const w = await joustPair({ bots: ['skilled', 'still'], fps, lag }), w2 = await joustPair({ bots: ['random', 'skilled'], fps, lag });
-      t.ok(w.results.every(r => /Dad wins 3 : 0/.test(r)) && w.scores.every(s => s === '3,0') && w2.results.every(r => /Kid wins 3 : [01]/.test(r)) && w2.results[0] === w2.results[1] && w.passes[0] === w.passes[1] && w2.passes[0] === w2.passes[1],
-        `${fps} fps, a ${lag} s line: both computers agree on every pass and on the winner (${w.results[1]} / ${w2.results[0]})`);
+      t.ok(agree(w) && agree(w2), `${fps} fps, a ${lag} s line: both computers agree on every pass and on the winner (Dad's screen "${w.results[0]}", Kid's "${w.results[1]}"; Dad's "${w2.results[0]}", Kid's "${w2.results[1]}")`);
+      t.ok(/Dad wins 3 : 0/.test(w.results[0]) && /Kid wins 3 : [0-2]/.test(w2.results[0]), `${fps} fps: the skilled rider wins both (${w.results[0]} / ${w2.results[0]})`);
       const k = await joustPair({ bots: ['kid', 'skilled'], fps, lag });
-      t.ok(k.results.every(r => /Kid wins 3 : [0-2]/.test(r)) && k.scores[0] === k.scores[1], `${fps} fps, a ${lag} s line: leading the spot beats a child who aims where it is (${k.results[0]})`);
+      t.ok(agree(k) && /Kid wins 3 : [0-2]/.test(k.results[0]), `${fps} fps, a ${lag} s line: leading the spot beats a child who aims where it is (${k.results[0]})`);
     }
+    // many games, lines and losses: the two screens never disagree (only the leader's word ends the game; the friend's score is the leader's)
+    const B = ['skilled', 'random', 'kid', 'masher', 'still'], odd = [];
+    let games = 0;
+    for (const fps of [60, 20]) for (const lag of [0, 0.1, 0.3, 0.8]) for (const drop of [0, 0.2, 0.4]) for (let seed = 1; seed <= 4; seed++) {
+      const bots = [B[seed % 5], B[(seed * 3 + 1) % 5]], r = await joustPair({ bots, fps, lag, drop, seed, lineSeed: seed * 77 + Math.round(lag * 1000) + Math.round(drop * 10) });
+      games++;
+      if (!agree(r)) odd.push(`${fps} fps ${lag} s ${drop} lost ${bots}: ${r.results.join(' / ')}`);
+    }
+    t.ok(!odd.length, `${games} games at 60 / 20 fps, lines of 0-0.8 s, up to 40 % lost: both screens always end with the same winner and score ${odd.slice(0, 3).join(' | ')}`);
     const lossy = await joustPair({ bots: ['skilled', 'masher'], fps: 30, lag: 0.2, drop: 0.25 });
     t.ok(lossy.results.every(r => /Dad wins 3 : [01]/.test(r)) && lossy.results[0] === lossy.results[1] && lossy.passes[0] === lossy.passes[1] && lossy.lost > 10, `a quarter of the messages lost: the tips, the words and the heartbeat still bring both to the same end (${lossy.lost} lost, ${lossy.results[1]})`);
     t.ok(lossy.players.every(q => q.carry === null && Math.abs(q.pos.z - 140) < 1e-9), 'at the end both are put down where they stood');
