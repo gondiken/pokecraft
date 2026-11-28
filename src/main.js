@@ -30,7 +30,9 @@ import './ballmatch.js'; // football and basketball (Playland's Ball Stadium),
 import './kartduel.js';  // a kart race (Playland's Race Track),
 import './parkourrace.js'; // a Parkour race (the Obstacle Course, main world),
 import './bounceduel.js';  // Bounce-Back for two (the Mirror Palace's court),
-import './bumperduel.js';  // Bumper Cars for two (Playland's Funfair)
+import './bumperduel.js';  // Bumper Cars for two (Playland's Funfair),
+import './joustduel.js';   // the Joust for two (the Castle's Tilt Yard),
+import './siegeduel.js';   // Shield Up! for two (the Castle's practice field)
 import { createPlayTogether } from './playtogether.js';
 import { createSwaps } from './swaps.js'; // wave 17: gifts and trades
 import { createSwapUi } from './swapui.js'; // wave 17
