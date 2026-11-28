@@ -95,6 +95,7 @@ export class KartRace extends FriendGame {
 const track = game => game.gymLive?.of('part:race');
 addFriendGame({
   id: 'race', icon: '🏁', name: 'Kart race', sub: `${RACE.laps} laps round the Race Track.`,
+  place: 'playland', arrive: 'race', where: 'the Race Track', // asked for anywhere else: a trip there and back (friendgames.js)
   ask: name => `${name} wants to race you! ${RACE.laps} laps in karts.`,
   shown: game => !!track(game),
   whyNot: game => { const r = track(game); return r?.duel || r?.state === 'count' || r?.state === 'race' ? 'Finish your race first!' : ''; },

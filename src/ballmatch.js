@@ -302,6 +302,7 @@ for (const id of ['football', 'hoops']) {
   const sport = SPORTS[id];
   addFriendGame({
     id, icon: sport.icon, name: sport.name, sub: `First to ${sport.to}, in the Ball Stadium.`,
+    place: 'playland', arrive: 'stadium', where: 'the Ball Stadium', // asked for anywhere else: a trip there and back (friendgames.js)
     ask: name => `${name} wants to play ${sport.name.toLowerCase()} with you! First to ${sport.to} wins.`,
     shown: game => !!stadium(game),
     whyNot: game => (stadium(game)?.match ? 'Finish your match first!' : ''),

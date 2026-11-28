@@ -7,6 +7,8 @@ export function createGuide(game) {
   // Points the player towards the next gym they haven't beaten yet.
   function updateGuide() {
     const p = game.player.pos;
+    const play = game.friendGames?.aim?.(p); // a game for two has its own arrow (tag: the one who is IT is led to the runner)
+    if (play) { updateNavArrow(p, { target: { aim: () => play } }, ''); return; }
     const nav = game.nav?.update(p); // T39a: a place chosen in "Where to go" (null = the arrow chooses, exactly as before)
     if (game.world.realm) { // T31/T35: in a realm the arrow follows its gym (the next one without a badge); with none left it points at the Wake Stone
       if (!game.world.wake && !game.world.door) { game.ui.setGuide(`☾ ${game.world.realm.name}`); return; } // T38a: the Swirl has a door back instead of a Wake Stone
