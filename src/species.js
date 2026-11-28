@@ -915,6 +915,9 @@ function L(type, second, extra = []) {
   return [...base, ...extra, ...(BIG[type] || [])].filter(([, m]) => m).sort((a, b) => a[0] - b[0]); // no slot for a type = no move
 }
 
+// A type's four standard moves and its big moves (wizardcrew.js: the Wizard's painted creatures borrow other types' moves).
+export const typeMoves = t => ({ t1: T1[t], t2: T2[t], t3: T3[t], t4: T4[t], big: (BIG[t] || []).map(([, id]) => id) });
+
 // The Custom type: a design's model recipe from its default paint (body, accent, belly = PAINTS indices; custom.js).
 const designModel = (shape, scale, paint) => ({ shape, scale, ...paintColours(paint), extras: [] });
 

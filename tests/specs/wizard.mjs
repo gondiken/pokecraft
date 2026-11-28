@@ -122,6 +122,17 @@ export default async function ({ browser, base, t }) {
         const src = await (await fetch('/src/sound.js')).text();
         const out = { problems: [] };
         const bad = m => out.problems.push(m);
+        { // owner 2026-11-28: the Wizard's painted team (wizardcrew.js): every type a theme, the same seed = the same team, names fit, models build
+          const WC = await import('/src/wizardcrew.js'), GK = await import('/src/guardiankit.js');
+          for (const t of Object.keys(S.TYPE_COLORS)) if (t !== 'normal' && t !== 'custom' && !WC.THEMES.includes(t)) bad(`no Wizard theme for ${t}`);
+          if (JSON.stringify(WC.wizardCrew(5)) !== JSON.stringify(WC.wizardCrew(5))) bad('wizardCrew not pure');
+          if (JSON.stringify(WC.wizardCrew(5)) === JSON.stringify(WC.wizardCrew(6))) bad('two seeds, one team');
+          for (let seed = 0; seed < 40; seed++) for (const m of WC.wizardCrew(seed, seed % 4)) {
+            if (m.moves.length !== 4 || !m.moves.every(id => S.MOVES[id])) bad(`crew ${seed} moves ${m.moves}`);
+            if (!m.design.n || m.design.n.length > GK.NAME_MAX || JSON.stringify(GK.cleanDesign(m.design)) !== JSON.stringify(m.design)) bad(`crew ${seed} design ${m.design.n}`);
+            if (seed < 4) S.disposeModel(S.buildModel('guardian', m.design));
+          }
+        }
         if (!S.TYPE_COLORS.custom || !/#f2ead8/.test(S.TYPE_COLORS.custom)) bad('type colour');
         const mine = Object.entries(S.SPECIES).filter(([, s]) => s.type === 'custom').map(([id]) => id).sort();
         out.mine = mine.join();
@@ -793,11 +804,12 @@ export default async function ({ browser, base, t }) {
     await waitFor(page, () => window.pokecraft.inBattle && window.pokecraft.battle.foes?.length === 6, null, 60000);
     const bt = await page.evaluate(async () => {
       const g = window.pokecraft, S = await import('/src/species.js'), b = g.battle;
-      return { levels: b.foes.map(f => f.level), species: b.foes.map(f => f.species), boss: b.boss, xp: b.xpBoost, name: b.trainer?.name, moves: b.foes.map(f => f.moves.slice()), valid: b.foes.every(f => f.moves.every(m => S.MOVES[m])) };
+      return { levels: b.foes.map(f => f.level), species: b.foes.map(f => f.species), names: b.foes.map(f => S.nameOf(f)), types: b.foes.map(f => S.MOVES[f.moves[0]].type), boss: b.boss, xp: b.xpBoost, name: b.trainer?.name, moves: b.foes.map(f => f.moves.slice()), valid: b.foes.every(f => f.moves.every(m => S.MOVES[m])) };
     });
-    t.ok(bt.levels.join() === '82,83,84,85,86,88' && bt.species.join() === 'visionelk,grandtome,loopwyrm,comethorn,stormwyvern,spectrion', `the Wizard's team: ${bt.species.join()} at ${bt.levels.join()}`);
+    // owner 2026-11-28: a new painted team every battle (wizardcrew.js): six guardians with their own names
+    t.ok(bt.levels.join() === '82,83,84,85,86,88' && bt.species.every(s => s === 'guardian') && new Set(bt.names).size === 6 && !bt.names.includes('Guardian'), `the Wizard's painted team: ${bt.names.join()} at ${bt.levels.join()}`);
     t.ok(bt.boss === true && bt.xp === 1.5 && bt.name === 'The Wizard' && bt.valid, `a boss battle (the last one hangs on once), xp boost ${bt.xp}, every move real`);
-    t.ok(bt.moves[2].includes('portalparty') && bt.moves[3].includes('starrynight') && bt.moves[4].includes('scalestorm') && bt.moves[5].includes('colorcarnival'), `his signature creatures carry their moves (${bt.moves.map(m => m.length).join()} moves each)`);
+    t.ok(bt.moves.every(m => m.length === 4) && new Set(bt.types).size === 6, `each creature has four moves of its own theme (${bt.moves.map(m => m[0]).join()})`);
     if (want('battle')) { await page.waitForTimeout(1500); await shot(page, 'w19-battle.png'); }
     for (let i = 0; i < 120 && (await page.evaluate(() => window.pokecraft.inBattle)); i++) {
       await page.evaluate(() => { const bs = [...document.querySelectorAll('#b-actions button:not([disabled])')]; (bs.find(b => (b.querySelector('small')?.textContent || '').includes('power ')) || bs[0])?.click(); });

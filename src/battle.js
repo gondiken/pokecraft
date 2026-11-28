@@ -546,7 +546,11 @@ export class Battle {
       await this.sendOutFoe();
     } else {
       const npc = this.trainer;
-      this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level, moves]) => makeCreature(species, this.level.foeLevel(level, MAX_LEVEL), moves));
+      this.foes = this.duel ? this.duel.team.filter(c => SPECIES[c?.species]).slice(0, 6).map(copy) : opts.team.map(([species, level, moves, paint]) => {
+        const c = makeCreature(species, this.level.foeLevel(level, MAX_LEVEL), moves);
+        if (paint) c.paint = paint; // the Wizard's painted creatures (wizardcrew.js): a new design each battle
+        return c;
+      });
       this.stepBack(npc.pos, 5.5);
       g.player.lookAt(new THREE.Vector3(npc.pos.x, npc.pos.y + 1.2, npc.pos.z));
       this.foePos = npc.pos;
