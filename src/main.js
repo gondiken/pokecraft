@@ -1269,7 +1269,7 @@ function updateTarget() {
       : target.block?.id === B.BED && game.place === MAIN ? 'Sleep' // T31
       : (target.block && game.gymLive.prompt(target.block, 'tap') && (game.gymLive.action(target.block) || 'Press')) || (reach ? 'Break' : game.homes.matPos ? 'My home' : 'Break');
   let dim = !(target.player || target.npc || target.wild || target.near || reach || game.homes.matPos);
-  if (act === 'Break' && game.being.can()) { act = ''; dim = !(target.player || target.npc || target.wild || target.near); } // chapter 3: nothing breaks in Wobbleland, so the button says nothing at a wall (a thing an ability acts on gives it a word: "Dig!")
+  if (act === 'Break' && (game.being.can() || game.world.realm?.locked)) { act = ''; dim = !(target.player || target.npc || target.wild || target.near); } // chapter 3: nothing breaks in Wobbleland (owner 2026-11-28: nor in chapter 2's locked worlds), so the button says nothing at a wall (a thing an ability acts on gives it a word: "Dig!")
   if (game.ui.asking) { act = game.ui.asked.yes; dim = false; } // T39b: the action button answers yes and says so
   const id = game.hotbar[game.selected];
   const noneLeft = isLimited(id) && !game.blockCounts[id];
