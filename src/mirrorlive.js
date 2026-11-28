@@ -10,6 +10,7 @@
 // Owner rules (plans/wave18-mirror.md 1): a miss never fails (a round starts again, kind help after two), every game stays playable for fun once won (forfun.js, nothing new saved),
 // clocks are summed dt in fixed sub-steps and stand still in a battle / an ask / a panel / the pause, a won Duke Dazzle battle clears the nine round keys (the crew's stay).
 // `manual` + step(dt, input) and info() for tests; nothing is sent in play together (each player plays their own court, twin and Gloomies).
+// Owner 2026-11-28: Bounce-Back for two (bounceduel.js) borrows the court through `setDuel(d)`; with no duel set everything here is exactly as before.
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
@@ -52,6 +53,7 @@ export class MirrorLive {
     // the Moonlit Gallery
     this.sr = null; this.shining = false; this.bFun = new ForFun(SPOT_ROUNDS); this.bTries = [0, 0, 0]; this.bMiss = [0, 0, 0]; this.stick = { yaw: 0, pitch: 0 }; this.shiverT = 0; this.poofs = []; this.lastSpot = null;
     this.railObj = this.makeRailObj(); this.sunObj = this.makeSunObj();
+    this.duel = null; // Bounce-Back for two (bounceduel.js): while it runs the court is the duel's, the single-player court stays shut
     this.groups = []; this.funny = []; this.funMax = 2; this.funT = 0; this.funDt = 1 / 60;
     this.beamWorld = { isSolid: (x, y, z) => this.world.isSolid(x, y, z), isPane: (x, y, z) => this.world.get(x, y, z) === B.MIRROR_PANE };
     this.build();
@@ -128,6 +130,13 @@ export class MirrorLive {
     for (const t of [this.twin, this.hand, this.ball, this.cleo, this.cleoMirror, this.spinner]) if (t) t.visible = false;
   }
 
+  // Bounce-Back for two (bounceduel.js) takes the court (d) or gives it back (null): the single-player round stops, Play! is not offered meanwhile.
+  setDuel(d) {
+    if (d) this.giveBack(); // (any of the three games you were in stops: you are put down where it holds you)
+    this.duel = d || null;
+    this.zooming = true;
+  }
+
   /* ---------------------------------------------- the stances ---------------------------------------------- */
   makeRailObj() {
     const me = this;
@@ -163,6 +172,7 @@ export class MirrorLive {
   /* ---------------------------------------------- the hooks of the live-part interface ---------------------------------------------- */
   near(p = this.game.player) {
     if (!p || this.game.inBattle || this.game.world !== this.world) return null;
+    if (this.duel) return null; // (Bounce-Back for two: the duel's own stance, no button)
     if (this.rail) return this.br && !this.br.done ? 'Stop' : 'Play!';
     if (this.shining) return this.sr && !this.sr.done ? 'Stop' : 'Shine!';
     if (p.carry) return null;
@@ -377,7 +387,7 @@ export class MirrorLive {
   setFov(fov) { const cam = this.game.camera; if (cam && Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix?.(); } }
   zoom(dt) { // the sun mirror stance and the court zoom in a little (the Gloomies and Cleo are far away); out of them the camera goes back to the usual view and is left alone
     const cam = this.game.camera; if (!cam) return;
-    const want = this.shining ? VIS.fovSun : this.rail ? VIS.fovRail : VIS.fov, on = this.shining || this.rail;
+    const want = this.shining ? VIS.fovSun : this.rail || this.duel ? VIS.fovRail : VIS.fov, on = this.shining || this.rail || !!this.duel; // (a duel zooms like the rail)
     if (!on && !this.zooming) return;
     this.zooming = true;
     const next = cam.fov + (want - cam.fov) * Math.min(1, dt * VIS.fovRate);
