@@ -144,6 +144,21 @@ export default async function ({ browser, base, t }) {
       const tk = playDuel([DUEL_BOTS.tracker(), DUEL_BOTS.kid()], { fps, budget: 120 });
       t.ok(ak.winner === 0 && ka.winner === 1 && tk.score.join() === '0,0', `${fps} fps: easy to get, hard to master: a player who angles the mirror beats a child who follows the ball with its eyes (${ak.score.join(':')} in ${ak.time} s, ${ka.score.join(':')}); sending it straight back never does (${tk.score.join(':')})`);
     }
+    // owner 2026-11-28 "the light needs to be faster for us to have fun": the duel's own ball, and how it plays for children on a tablet
+    t.ok(DUEL_RULES.ball === R.rounds[2].ball && DUEL_RULES.speedUp === 1.08 && DUEL_RULES.speedCap === 1.75 && DUEL_RULES.slide === R.slideSpeed,
+      `a faster ball: round 3's speed (${DUEL_RULES.ball}), x${DUEL_RULES.speedUp} a hit up to x${DUEL_RULES.speedCap} (${(DUEL_RULES.ball * DUEL_RULES.speedCap).toFixed(1)} blocks/s); the mirror slides as in the single-player game`);
+    for (const fps of [60, 20]) {
+      let pts = 0, time = 0, early = 0, earlyAll = 0, done = 0, ang = 0, still = 0;
+      for (let s = 1; s <= 10; s++) {
+        const cc = playDuel([DUEL_BOTS.child(s), DUEL_BOTS.child(s + 100)], { fps, budget: 400 });
+        pts += cc.events.filter(e => e.type === 'point').length; time += cc.time; if (cc.done) done++;
+        for (const e of cc.events) { if (e.type === 'hit' && e.rally <= 3) { early++; earlyAll++; } if (e.type === 'miss' && e.rally <= 2) earlyAll++; }
+        if (playDuel([DUEL_BOTS.angler(), DUEL_BOTS.child(s)], { fps, budget: 400 }).winner === 0) ang++;
+        if (playDuel([DUEL_BOTS.still(), DUEL_BOTS.child(s)], { fps, budget: 400 }).winner === 1) still++;
+      }
+      t.ok(done === 10 && early / earlyAll >= 0.8 && time / pts <= 22, `${fps} fps, two children on tablets (late, straight-line guesses, a little tilt): the first balls of a rally mostly come back (${early}/${earlyAll}), a point every ${(time / pts).toFixed(1)} s, all 10 games end`);
+      t.ok(ang >= 9 && still === 10, `${fps} fps: an aiming player beats such a child (${ang}/10); a still player always loses (${still}/10)`);
+    }
     // the single-player game is untouched (the same numbers mirror.mjs checks)
     const cr = new BB.BounceRound(7, 0, 0); for (let i = 0; i < 600; i++) cr.update(1 / 60, { slide: 0.3, tilt: 0.2 });
     t.ok(R.speedUp === 1.03 && R.speedCap === 1.3 && R.rounds[0].ball === 6 && cr.time > 9.99 && !cr.done, 'BounceRound and COURT_RULES are as they were (the duel has its own speed-up)');
