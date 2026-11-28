@@ -2,7 +2,7 @@
 //   rules : Node: the pop rule between two friends' cars (from behind and fast pops; head-on, from the side and a slow push never do),
 //           60 and 20 frames a second give the same pops and places, the shared clock (a late friend's clock pulled to the leader's:
 //           the bots stand in the same places), the leader's score (grace, the balloon coming back, first to 3, a newer state only),
-//           the seen car (carried on with its speed, stopped when stale, a jump snaps), drivers: a skilled chaser always wins
+//           the seen car (carried on with its speed, stopped when stale, a jump snaps), drivers: facing each other still gives pops (a side bump spins you, the nose turns at a limited rate), a clipper vs a facer is close, a still player loses
 //   play  : two browsers in Playland's Funfair: the friend menu, ask, yes, both in cars in their bays, 3-2-1-Go, a pop by each side
 //           with real keys through the game's own loop, to 3, both hear the winner, both out of the cars, nothing saved, the
 //           Funfair's own Bumper Cars game untouched
@@ -79,7 +79,6 @@ function sim({ fps = 60, lag = 0.15, secs = 40, drive = 'skilled', friend = 'cru
   const wishOf = (who, me, now) => {
     const c = me.car.car;
     if (who === 'still') return { x: 0, z: 0 };
-    if (who === 'defend') { const p = me.seen.pos, dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz) || 1; return d < 6 ? { x: dx / d, z: dz / d } : { x: 0, z: 0 }; } // turns its nose to you
     if (who === 'cruise') { // a kid driving round the arena, on and off the pedal, stopping a moment at each corner
       const W = [[125, 147], [143, 147], [143, 160], [125, 160]]; me.wp ??= k % 4;
       if (me.waitTo > now || now % 2 > 1.2) return { x: 0, z: 0 };
@@ -88,6 +87,8 @@ function sim({ fps = 60, lag = 0.15, secs = 40, drive = 'skilled', friend = 'cru
       const d = Math.hypot(tx - c.x, tz - c.z) || 1; return { x: (tx - c.x) / d, z: (tz - c.z) / d };
     }
     const o = { ...me.seen.pos, vx: me.seen.m.vx, vz: me.seen.m.vz, yaw: me.seen.m.yaw };
+    if (who === 'facer') return R.faceWish(c, o, 0.15 * Math.sin(now * (0.7 + 0.1 * k) + k)); // keeps its nose on you, a little wobbly
+    if (who === 'clipper') return R.clipWish(c, o, k % 2 ? 1 : -1);
     return who === 'skilled' ? R.behindWish(c, o, 2.6, me.memo) : R.ramWish(c, o);
   };
   for (let f = 0; f < secs * fps; f++) {
@@ -100,7 +101,7 @@ function sim({ fps = 60, lag = 0.15, secs = 40, drive = 'skilled', friend = 'cru
       if (f % (4 * per) === per - 1) other.inbox.push({ q: q + 1 + Math.round(lag / 0.05), m: me.car.state() });
     }
   }
-  return { pops, score: score.score, L: L.car.state(), F: F.car.state(), at3: pops.filter(p => p[0] === 0)[2]?.[1] ?? null };
+  return { pops, score: score.score, L: L.car.state(), F: F.car.state(), at3: pops.filter(p => p[0] === 0)[2]?.[1] ?? null, first: pops[0]?.[1] ?? null };
 }
 // one car driving at a still friend (state heard once) from `from`, wish held; -> the events
 function ram({ fps = 60, from = [134, 144.2], friendYaw = -Math.PI / 2, wish = { x: -1, z: 0 }, secs = 2, friendAt = [130, 144.2], friendV = [0, 0] } = {}) {
@@ -134,18 +135,25 @@ export default async function ({ browser, base, t }) {
     // the whole duel at 60 and 20 frames a second
     const a = sim({ fps: 60 }), b = sim({ fps: 20 });
     t.ok(JSON.stringify(a) === JSON.stringify(b) && a.pops.length >= 1, `two browsers over a slow line: 60 and 20 frames a second give the same pops and places (${JSON.stringify(a.pops)})`);
-    // drivers (ten games each, the line 0.10 to 0.19 s slow)
-    const runs = (d, fr) => Array.from({ length: 10 }, (_, k) => sim({ drive: d, friend: fr, k, secs: 60, lag: 0.1 + 0.01 * k }));
-    const wins = rs => rs.filter(r => r.score[0] >= 3).length, mean = rs => { const v = rs.map(r => r.at3 ?? 60); return v.reduce((x, y) => x + y, 0) / v.length; };
-    const sk = runs('skilled', 'cruise'), nv = runs('naive', 'cruise'), nd = runs('naive', 'defend'), sd = runs('skilled', 'defend');
-    t.ok(wins(sk) === 10, `a skilled driver (round to the back, then straight in, backing off for a run-up) pops a friend driving round the arena 3 times in every game (mean ${mean(sk).toFixed(1)} s)`);
-    t.ok(nd.every(r => r.score[0] === 0), `ramming straight at a friend who turns their nose to you never pops a balloon (10 games of 60 s: ${nd.map(r => r.score[0]).join('')}): turning to face them is the defence`);
-    console.log(`  (a rammer against a friend driving round: ${wins(nv)} / 10 games won, mean ${mean(nv).toFixed(1)} s; the skilled driver against a defender: ${sd.map(r => r.score[0]).join('')})`);
+    // drivers (twelve games each, the line 0.10 to 0.21 s slow). Owner 2026-11-28: "both players just turn front" was a stalemate.
+    const runs = (d, fr) => Array.from({ length: 12 }, (_, k) => sim({ drive: d, friend: fr, k, secs: 60, lag: 0.1 + 0.01 * k }));
+    const wins = (rs, i = 0) => rs.filter(r => r.score[i] >= 3).length, pops = (rs, i) => rs.reduce((n, r) => n + r.score[i], 0);
+    const median = rs => { const v = rs.map(r => r.first ?? 99).sort((a, b) => a - b); return v[rs.length >> 1]; };
+    const ff = runs('facer', 'facer'), cf = runs('clipper', 'facer'), fs = runs('facer', 'still'), sk = runs('skilled', 'cruise');
+    const line = (rs, a, b) => `${a} ${pops(rs, 0)} pops / ${wins(rs, 0)} wins, ${b} ${pops(rs, 1)} / ${wins(rs, 1)}, first pop ${median(rs) === 99 ? 'none' : `${median(rs).toFixed(0)} s`}`;
+    t.ok(median(ff) < 30 && pops(ff, 0) >= 8 && pops(ff, 1) >= 8, `two friends who both keep facing each other still pop balloons, both of them (${line(ff, 'leader', 'friend')})`);
+    t.ok(pops(cf, 0) >= 8 && pops(cf, 1) >= 8 && wins(cf, 1) <= 6, `a skilled player clipping the front corner (a side bump spins them) and a plain facer are a close game: ramming does not win easily (${line(cf, 'clipper', 'facer')})`);
+    t.ok(pops(fs, 1) <= 2 && wins(fs, 0) >= 8, `a player who sits still loses (${line(fs, 'facer', 'still')})`);
+    t.ok(wins(sk) === 12, `a skilled driver pops a friend driving round the arena 3 times in every game`);
+    console.log(`  (bots, 60 s games: facer vs facer: ${line(ff, 'leader', 'friend')}; clipper vs facer: ${line(cf, 'clipper', 'facer')})`);
     const bounce = (() => { const me = new R.DuelCar({ x: 134, z: 144.2, yaw: -Math.PI / 2 }, 0), seen = new R.SeenCar(); seen.hear({ x: 130, z: 144.2, vx: 0, vz: 0, yaw: Math.PI / 2 });
       for (let f = 0; f < 90; f++) me.step(1 / 60, { wish: f < 40 ? { x: -1, z: 0 } : { x: 0, z: 0 }, friend: seen, poppable: true }); return { yaw: me.car.yaw, vx: me.car.vx }; })();
-    t.ok(Math.abs(bounce.yaw + Math.PI / 2) < 1e-9 && bounce.vx > 0, 'a head-on bump sends my car back, but its nose (and so its balloon) stays the way I steer');
-    const still = sim({ drive: 'naive', friend: 'still', secs: 30 });
-    console.log(`  (a friend sitting in its bay, its back to the rail: ${still.score[0]} pops for a rammer in 30 s)`);
+    t.ok(Math.abs(bounce.yaw + Math.PI / 2) < 1e-9 && bounce.vx > 0, 'a head-on bump sends my car back, but never spins it: its nose (and so its balloon) stays the way I steer');
+    const spun = (() => { const me = new R.DuelCar({ x: 130, z: 144.2, yaw: -Math.PI / 2 }, 0), seen = new R.SeenCar(); seen.hear({ x: 130, z: 146.5, vx: 0, vz: -6, yaw: Math.PI }); let maxSpin = 0;
+      for (let f = 0; f < 60; f++) { me.step(1 / 60, { friend: seen, poppable: true }); maxSpin = Math.max(maxSpin, Math.abs(me.spin)); } return { maxSpin, turned: Math.abs(R.DUEL_BUMP.noseRate) }; })();
+    t.ok(spun.maxSpin > 2, `a bump from the side spins the car round (${spun.maxSpin.toFixed(1)} rad/s), so its balloon swings out`);
+    const turn = (() => { const me = new R.DuelCar({ x: 124, z: 144.5, yaw: Math.PI / 2 }, 0); for (let f = 0; f < 30; f++) me.step(1 / 60, { wish: { x: -1, z: 0 } }); return Math.abs(me.car.yaw - Math.PI / 2); })();
+    t.ok(Math.abs(turn - R.DUEL_BUMP.noseRate * 0.5) < 0.02, `the nose turns at most ${R.DUEL_BUMP.noseRate} rad/s: half a second of steering back turns it ${turn.toFixed(2)} rad (a quick friend can get round you)`);
     // the shared clock: the friend started 0.3 s late; one ping / pong over a 0.12 s line pulls it to the leader's
     const L = new R.DuelCar(BAYS[1]), F = new R.DuelCar(BAYS[4], -R.DUEL_BUMP.count - 0.3);
     let now = 0, skew = 0, best = Infinity, sent = null, pong = null;

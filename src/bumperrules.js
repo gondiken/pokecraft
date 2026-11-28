@@ -6,8 +6,9 @@
 // moving disc for MY car (each computer bounces only its own car). A balloon rides on each friend's car's BACK: bumping it from
 // behind and closing fast (the same rule as the bots', fairgames.js bumpPops) pops it. The bumper's computer claims a pop, the
 // leader's DuelScore counts it; after a pop neither car can be popped for `grace` seconds and the balloon comes back after `back`.
-// A duel car's nose turns to where its driver STEERS, never where a bump sends it (fairgames.js turns it to the way it moves): a bump
-// never spins your balloon round to the friend, and turning to face your friend is how you protect it.
+// A duel car's nose turns to where its driver STEERS (fairgames.js turns it to the way it moves), but only at `noseRate`, and a bump
+// from the SIDE (a friend's or a bot's) spins it round (`spinK`): facing your friend protects your balloon, until a glancing bump
+// spins you or they get round you faster than you can turn. Head-on and from behind never spin.
 import { BUMPER, BAYS, BOTS, ARENA, botAt, bumpPops, BumperCar } from './fairgames.js';
 
 const TAU = Math.PI * 2;
@@ -29,6 +30,11 @@ export const DUEL_BUMP = {
   ping: 2,            // the friend asks the leader's clock this often
   skewRate: 3,        // how fast the friend's clock is pulled to the leader's (1/s)
   skewSnap: 0.6,      // a clock further off than this jumps
+  // Owner 2026-11-28 ("both players just turn front": facing each other was a stalemate). Measured with the spec's bots:
+  noseRate: 2,        // a car's nose turns at most this fast to where you steer (rad/s; half a turn takes 1.6 s): you can be out-turned
+  cone: 60,           // a pop: within this many degrees of the friend's back (the bots' own rule is 55)
+  spinK: 1,           // a bump from the SIDE spins your car round (rad/s per block/s of push across your nose); head-on or from behind never
+  spinDrag: 2,        // ... and the spin dies away (1/s)
   maxSubs: 360,       // sub-steps per frame at most (3 s: a very slow frame still moves the car in real time, as the friend sees it carried on)
 };
 
@@ -64,7 +70,7 @@ export class SeenCar {
   }
   get pos() { return { x: this.m.x + this.err.x, z: this.m.z + this.err.z }; }
   // a moving disc for BumperCar.step's `movers` (hx / hz = where its nose points: its back is the other way)
-  disc(balloon) { const p = this.pos, m = this.m; return { id: 'friend', x: p.x, z: p.z, vx: m.vx, vz: m.vz, hx: Math.sin(m.yaw), hz: Math.cos(m.yaw), yaw: m.yaw, balloon: !!balloon }; }
+  disc(balloon) { const p = this.pos, m = this.m; return { id: 'friend', cone: Math.cos(DUEL_BUMP.cone * Math.PI / 180), x: p.x, z: p.z, vx: m.vx, vz: m.vz, hx: Math.sin(m.yaw), hz: Math.cos(m.yaw), yaw: m.yaw, balloon: !!balloon }; }
 }
 
 // My car in the duel: the car, the shared clock T and the fixed sub-steps. step(dt, { wish, friend: SeenCar | null, poppable })
@@ -74,7 +80,7 @@ export class DuelCar {
   constructor(bay, T = -DUEL_BUMP.count) {
     this.bay = bay;
     this.car = new BumperCar(bay.x, bay.z, bay.yaw);
-    this.T0 = T; this.k = 0; this.acc = 0; // T = T0 + k sub-steps + acc: the sub-steps fall on the same clock times at every frame rate
+    this.T0 = T; this.k = 0; this.acc = 0; this.spin = 0; // T = T0 + k sub-steps + acc: the sub-steps fall on the same clock times at every frame rate
     this.fleet = sharedFleet(this);
   }
   get T() { return this.T0 + this.k * BUMPER.sub + this.acc; }
@@ -94,12 +100,17 @@ export class DuelCar {
       friend?.advance(h);
       const go = t >= 0, sub = [];
       this.car.t += h;
-      const yaw = this.car.yaw;
+      const yaw = this.car.yaw, vx0 = this.car.vx, vz0 = this.car.vz;
       this.car.step(h, { wish: go ? wish : { x: 0, z: 0 }, fleet: this.fleet, parked, home: this.bay, closed: true,
         movers: friend?.heard ? [friend.disc(poppable && go)] : [] }, sub);
       // the nose points where you steer (a bump never spins your car round: your balloon stays behind you until you turn)
       const m = go ? Math.hypot(wish.x, wish.z) : 0;
-      this.car.yaw = m > 0.05 ? yaw + wrapA(Math.atan2(wish.x, wish.z) - yaw) * Math.min(1, NOSE_TURN * h) : yaw;
+      if (m > 0.05) { const d = wrapA(Math.atan2(wish.x, wish.z) - yaw) * Math.min(1, NOSE_TURN * h), lim = DUEL_BUMP.noseRate * h; this.car.yaw = yaw + Math.max(-lim, Math.min(lim, d)); } else this.car.yaw = yaw;
+      if (sub.some(e => e.type === 'hit' && (e.kind === 'friend' || e.kind === 'bot'))) { // a bump: its push across your nose spins you
+        const dvx = this.car.vx - vx0, dvz = this.car.vz - vz0;
+        this.spin += DUEL_BUMP.spinK * (Math.sin(yaw) * dvz - Math.cos(yaw) * dvx);
+      }
+      if (this.spin) { this.car.yaw += this.spin * h; this.spin *= Math.exp(-DUEL_BUMP.spinDrag * h); if (Math.abs(this.spin) < 0.01) this.spin = 0; }
       if (!go) { this.car.vx = 0; this.car.vz = 0; this.car.x = this.bay.x; this.car.z = this.bay.z; this.car.yaw = this.bay.yaw; } // waiting for Go
       for (const e of sub) { e.T = t; ev.push(e); }
     }
@@ -112,7 +123,7 @@ export class DuelCar {
 // Where the balloon on a car's back is (the stick's foot), as for the bots.
 export const balloonOfCar = (x, z, yaw) => ({ x: x - Math.sin(yaw) * 0.9, z: z - Math.cos(yaw) * 0.9 });
 // The pop rule between two friends' cars, as seen on the bumper's screen (fairgames.js bumpPops with the victim's nose).
-export const popsFriend = (car, seen) => bumpPops(car, seen);
+export const popsFriend = (car, seen) => bumpPops(car, seen, Math.cos(DUEL_BUMP.cone * Math.PI / 180));
 
 // The leader's score: side 0 = the leader, 1 = the friend. claim(by, T) counts a pop if the game is on and the grace is over.
 export class DuelScore {
@@ -156,6 +167,15 @@ export function behindWish(car, o, back = 2.6, memo = {}) {
   if (behind < 0) { const sx = hz, sz = -hx, s = (car.x - px) * sx + (car.z - pz) * sz >= 0 ? 1 : -1; tx += sx * s * 2.5; tz += sz * s * 2.5; }
   const dx = tx - car.x, dz = tz - car.z, d = Math.hypot(dx, dz);
   return steer(dx, dz, Math.min(6, 1.5 + d * 1.2));
+}
+// A facer: always drives straight at the friend (its nose stays on them); `wob` = a child's small wobble (rad).
+export const faceWish = (car, o, wob = 0) => { const w = ramWish(car, o), c = Math.cos(wob), s = Math.sin(wob); return { x: w.x * c - w.z * s, z: w.x * s + w.z * c }; };
+// A skilled facer: drives at the friend but clips their front corner (a side bump spins them), then straight in at the back it shows.
+export function clipWish(car, o, sd = 1) {
+  const dx = o.x - car.x, dz = o.z - car.z, d = Math.hypot(dx, dz) || 1, hx = Math.sin(o.yaw), hz = Math.cos(o.yaw);
+  if ((dx * hx + dz * hz) / d > 0.3) return { x: dx / d, z: dz / d };
+  const off = d < 5 ? 1.3 : 0.6, tx = o.x + hz * sd * off, tz = o.z - hx * sd * off, ex = tx - car.x, ez = tz - car.z, l = Math.hypot(ex, ez) || 1;
+  return { x: ex / l, z: ez / l };
 }
 export const ramWish = (car, o) => { const dx = o.x - car.x, dz = o.z - car.z, d = Math.hypot(dx, dz) || 1; return { x: dx / d, z: dz / d }; };
 
