@@ -34,7 +34,10 @@ const listen = page => page.evaluate(() => {
 });
 const standAt = (page, dx, dz = 0) => page.evaluate(([dx, dz]) => {
   const g = window.pokecraft, s = g.spawnPoint, y = 42;
-  const cx = Math.floor(s.x) + dx, cz = Math.floor(s.z) + dz;
+  let cx = Math.floor(s.x) + dx, cz = Math.floor(s.z) + dz;
+  // a spot outside every gym's protect box (else the platform is dropped when the world is built again after a trip)
+  const ok = (cx, cz) => { for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) if (!g.world.editAllowed(cx + x, y, cz + z, 3)) return false; return true; };
+  for (let k = 0; k < 40 && !ok(cx, cz); k++) cx += 8;
   for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) g.world.set(cx + x, y, cz + z, 3);
   g.player.pos.set(cx + 0.5, y + 1, cz + 0.5);
   g.player.vel.set(0, 0, 0);
