@@ -10,6 +10,8 @@
 // Owner 2026-10-28: both stay playable once won (forfun.js): the rounds come again in turn, just for fun, and nothing new is saved.
 // Never a fail: a splat is only goo on the screen, a short round starts again (kind help after two). Clocks are summed frame dt and stand
 // still in a battle / an ask / a panel / the pause. `manual` + step(dt, input) for tests; info() for tests.
+// Owner 2026-11-28: the Joust for two (joustduel.js) and Shield Up! for two (siegeduel.js) borrow the Castle through `setDuel(d)`; with no
+// duel set everything here is exactly as before (the lines marked "a game for two").
 import * as THREE from 'three';
 import { B } from './blocks.js';
 import { LiveCells } from './livecells.js';
@@ -67,6 +69,7 @@ export class CastleLive {
     this.drawn = { bridge: null, port: null, squire: null }; this.bridgeK = 0; this.portK = 0; this.announced = { bridge: false, port: false };
     this.stanceObj = this.makeStanceObj(); this.steedObj = this.makeSteedObj();
     this.groups = [];
+    this.duel = null; // a game for two (joustduel.js / siegeduel.js): while it runs, the single-player games stand aside
     this.build();
     this.sync(true);
   }
@@ -169,9 +172,18 @@ export class CastleLive {
   }
   running() { return !!this.sg && !this.sg.done; }
 
+  // A game for two takes the Castle (d) or gives it back (null): your own round stops, Shield! / Mount! are not offered meanwhile, Sir
+  // Splinter and the castle's horse step aside; the duel's big-button word comes from d.near / d.use, its throws are drawn from d.siegeView().
+  setDuel(d) {
+    if (d && this.duel !== d) { this.giveBack(); this.game.ui?.setPointers?.(null); this.game.ui?.toastSmall?.(false); this.game.ui?.setScore?.(null); }
+    this.duel = d || null;
+    if (!d) { this.crosshair(false); this.setFov(JOUST_VIEW.fov); this.game.ui?.setPointers?.(null); this.game.ui?.toastSmall?.(false); }
+  }
+
   /* ---------------------------------------------- the hooks of the live-part interface ---------------------------------------------- */
   near(p = this.game.player) {
     if (!p || this.game.inBattle || this.game.world !== this.world) return null;
+    if (this.duel) return this.duel.near?.(p) ?? null; // (a game for two)
     if (this.stance >= 0) return this.running() ? 'Stop' : 'Shield!'; // (won: again, just for fun)
     if (this.mounted) return this.ride?.phase === 'idle' ? 'Charge!' : null;
     if (p.carry) return null;
@@ -180,6 +192,7 @@ export class CastleLive {
     return null;
   }
   use(p = this.game.player) {
+    if (this.duel) return !!this.duel.use?.(p); // (a game for two)
     const w = this.near(p);
     if (!w) return false;
     if (w === 'Stop') { this.sg = null; this.toast('Stopped. Press Shield! to try again, or Jump to step off.'); return true; }
@@ -487,8 +500,7 @@ export class CastleLive {
     const step = Math.min(dt, CASTLE_RULES.dtMax);
     if (!this.paused()) {
       this.clock += step;
-      this.stepSiege(step);
-      this.stepJoust(step);
+      if (!this.duel) { this.stepSiege(step); this.stepJoust(step); } // (a game for two runs its own)
       if (inMaze(p.pos.x, p.pos.z)) { this.mazeTime += step; this.once('maze', WORDS.maze); } else if (p.pos.z < YARD.z1 + 1) this.mazeTime = 0;
     }
     this.syncT -= dt;
@@ -498,7 +510,7 @@ export class CastleLive {
     this.drawJoust(p, step);
     this.drawGates(step);
     this.stepMazeFun(p, step);
-    this.refreshChip();
+    if (!this.duel) this.refreshChip(); // (a game for two has its own chip)
   }
 
   /* ---------------------------------------------- drawing ---------------------------------------------- */
@@ -529,16 +541,17 @@ export class CastleLive {
     P.arms.instanceMatrix.needsUpdate = true; P.buckets.instanceMatrix.needsUpdate = true;
   }
   drawSiege(p) {
+    const view = this.duel?.siegeView?.() ?? this, sg = view.sg, stance = view.stance, shieldIn = view.shieldIn; // (a game for two: its throws and shield)
     const T = this.throws.userData.parts, M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(1, 1, 1), Z = new THREE.Matrix4().makeScale(0, 0, 0);
-    const list = this.sg && !this.sg.done ? this.sg.active() : [];
+    const list = sg && !sg.done ? sg.active() : [];
     let np = 0, na = 0;
-    const active = new Map(), stand = SIEGE.stones[Math.max(0, this.stance)];
+    const active = new Map(), stand = SIEGE.stones[Math.max(0, stance)];
     for (const a of list) {
       active.set(a.t.k, a);
       if (a.phase !== 'fly' || !a.pos) continue;
       const pos = new THREE.Vector3(...a.pos);
       if (a.t.kind === 'arrow' && na < T.n) {
-        const nx = throwAt(a.t, stand, this.sg.time + 0.02).pos || a.pos, dir = new THREE.Vector3(nx[0] - pos.x, nx[1] - pos.y, nx[2] - pos.z).normalize();
+        const nx = throwAt(a.t, stand, sg.time + 0.02).pos || a.pos, dir = new THREE.Vector3(nx[0] - pos.x, nx[1] - pos.y, nx[2] - pos.z).normalize();
         Q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir); M.compose(pos, Q, S);
         T.arrows.setMatrixAt(na, M); T.cups.setMatrixAt(na, M); na++;
       } else if (np < T.n) {
@@ -554,9 +567,9 @@ export class CastleLive {
     const seg = this.rings.userData.parts.seg, col = new THREE.Color();
     for (let j = 0; j < SIEGE.stones.length; j++) for (let k = 0; k < 12; k++) {
       let c = 0x5a5a64;
-      if (j === this.stance) {
+      if (j === stance) {
         // segment k sits toward spot k (both from north, clockwise); a direction (sin ang, cos ang) is at theta = PI - ang from north
-        const a = active.get(k), face = Math.round((((Math.PI - this.shieldIn.ang) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / (Math.PI / 6)) % 12;
+        const a = active.get(k), face = Math.round((((Math.PI - shieldIn.ang) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / (Math.PI / 6)) % 12;
         if (a) c = KIND_COLOUR[a.t.kind] ?? 0xff8a1a;
         else if (k === face) c = 0xd8dce6;
       }
@@ -564,23 +577,23 @@ export class CastleLive {
     }
     if (seg.instanceColor) seg.instanceColor.needsUpdate = true;
     // the pointers round the crosshair (the next three, where they are)
-    if (this.stance >= 0 && list.length) {
+    if (stance >= 0 && list.length) {
       const next = list.slice().sort((a, b) => a.t.at - b.t.at).slice(0, 3);
       // your shield on the same ring (owner 2026-10-31: front and back were confusing): put the blue arc on the arrows
       // a big pumpkin needs a perfect block: while it is the next to come, the blue arc shows that narrow part only (owner 2026-11-05)
-      const cover = next[0]?.t.kind === 'big' ? SIEGE.perfect : this.sg.plan.cover;
+      const cover = next[0]?.t.kind === 'big' ? SIEGE.perfect : sg.plan.cover;
       this.game.ui?.setPointers?.(next.map(a => ({ angle: a.t.kind === 'sky' ? 0 : this.relAngle(dirTo(stand, a.t.k), p), sky: a.t.kind === 'sky', colour: CSS(KIND_COLOUR[a.t.kind] ?? 0xff8a1a), size: a.phase === 'fly' ? 1 : 0.4 })),
-        { angle: this.relAngle(this.shieldIn.ang, p), up: !!this.shieldIn.up, cover });
+        { angle: this.relAngle(shieldIn.ang, p), up: !!shieldIn.up, cover });
     } else this.game.ui?.setPointers?.(null);
     // owner 2026-11-05 ("the texts block the view, especially on tablet"): on a Shield Stone the words are small and at the top edge
-    this.game.ui?.toastSmall?.(this.stance >= 0);
+    this.game.ui?.toastSmall?.(stance >= 0);
     // the shield you hold (in front of the camera, turned toward where it points; overhead while Jump is held)
-    const cam = this.game.camera, on = this.stance >= 0 && !!cam;
+    const cam = this.game.camera, on = stance >= 0 && !!cam;
     this.held.visible = on;
     if (on) {
-      const o = this.held, rel = this.relAngle(this.shieldIn.ang, p);
+      const o = this.held, rel = this.relAngle(shieldIn.ang, p);
       o.position.copy(cam.position); o.quaternion.copy(cam.quaternion);
-      if (this.shieldIn.up) { o.translateY(0.3); o.translateZ(-0.45); o.rotateX(-Math.PI / 2.4); }
+      if (shieldIn.up) { o.translateY(0.3); o.translateZ(-0.45); o.rotateX(-Math.PI / 2.4); }
       else { const r = Math.max(-1.2, Math.min(1.2, rel)); o.translateX(Math.sin(r) * 0.5); o.translateY(-0.3); o.translateZ(-0.75 * Math.cos(r) - 0.05); o.rotateY(-r); }
       o.scale.setScalar(0.38);
     }
@@ -590,12 +603,13 @@ export class CastleLive {
     const p = this.game.player, riding = this.mounted;
     this.steed.position.set(this.horse.x, 11, TILT.z);
     this.steed.rotation.y = this.horse.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
-    this.steed.visible = !(riding && p?.carry === this.steedObj && this.firstPerson());
+    this.steed.visible = !this.duel && !(riding && p?.carry === this.steedObj && this.firstPerson()); // (a game for two: the horse steps aside)
   }
   firstPerson() { return true; }
   drawKnight() {
     const kp = this.knightPose(), K = this.knight, parts = K.userData.parts;
     K.position.set(kp.x, 11, TILT.knightZ);
+    K.visible = !this.duel; if (this.shieldRig) this.shieldRig.visible = !this.duel; // (a game for two: Sir Splinter steps aside)
     K.rotation.y = kp.dir > 0 ? 0 : Math.PI; // faces +x when dir > 0
     // the tumble after a bullseye: he spins off his horse and pops back on
     const t = this.tumbleT;
@@ -632,7 +646,7 @@ export class CastleLive {
       this.setFov(cam.fov + (want - cam.fov) * Math.min(1, dt * 4));
     }
     // owner 2026-11-13: on the horse the game's + crosshair is hidden: only the gold spot and your aim dot are on the shield
-    this.crosshair(this.mounted && p?.carry === this.steedObj);
+    if (!this.duel) this.crosshair(this.mounted && p?.carry === this.steedObj); // (a game for two sets it itself)
     // your lance: from your right hand on his side toward the white ring; in the last moment before the meeting it thrusts onto it
     const on = this.mounted && !!cam;
     this.lance.visible = on;
