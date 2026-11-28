@@ -114,6 +114,17 @@ export class BumperCar {
       if (vn < 0) { this.vx -= (1 + BUMPER.botE) * vn * nx; this.vz -= (1 + BUMPER.botE) * vn * nz; if (-vn > 1.5) ev.push({ type: 'hit', kind: 'bot', i, speed: -vn }); }
       this.x = bot.x + nx * BUMPER.contact; this.z = bot.z + nz * BUMPER.contact;
     }
+    // Bumper Cars for two (bumperduel.js; never set otherwise): other moving cars, each { id, x, z, vx, vz, hx, hz, balloon }: a pop from
+    // behind when it carries a balloon, else a bounce like off a bot
+    for (const o of ctx.movers || []) {
+      const dx = this.x - o.x, dz = this.z - o.z, d = Math.hypot(dx, dz);
+      if (d >= BUMPER.contact) continue;
+      if (o.balloon && bumpPops(this, o)) ev.push({ type: 'pop', mover: o.id });
+      const nx = d > 1e-6 ? dx / d : 1, nz = d > 1e-6 ? dz / d : 0;
+      const vn = (this.vx - o.vx) * nx + (this.vz - o.vz) * nz;
+      if (vn < 0) { this.vx -= (1 + BUMPER.botE) * vn * nx; this.vz -= (1 + BUMPER.botE) * vn * nz; if (-vn > 1.5) ev.push({ type: 'hit', kind: 'friend', speed: -vn }); }
+      this.x = o.x + nx * BUMPER.contact; this.z = o.z + nz * BUMPER.contact;
+    }
     // parked cars (solid, they do not move)
     for (const o of ctx.parked || []) {
       const dx = this.x - o.x, dz = this.z - o.z, d = Math.hypot(dx, dz);
@@ -135,7 +146,7 @@ export class BumperCar {
     if (this.z < A.z0 + r) bounce('z', -1, A.z0 + r);
     if (this.z > A.z1 - r) bounce('z', 1, A.z1 - r);
     if (this.x > A.x1 - r) {
-      const inGap = this.z > A.gap[0] + r * 0.5 && this.z < A.gap[1] - r * 0.5;
+      const inGap = !ctx.closed && this.z > A.gap[0] + r * 0.5 && this.z < A.gap[1] - r * 0.5; // (ctx.closed: Bumper Cars for two, no way out)
       if (inGap) { if (this.x > A.x1 + 0.3) ev.push({ type: 'exit' }); }
       else bounce('x', 1, A.x1 - r);
     }
