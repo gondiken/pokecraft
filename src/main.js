@@ -27,7 +27,10 @@ import { createHideSeek } from './hideseek.js'; // T30
 import { createFriendGames } from './friendgames.js'; // owner 2026-11-26: games for two friends
 import './taggame.js';   // each file adds its game to the friend menu, in this order: tag,
 import './ballmatch.js'; // football and basketball (Playland's Ball Stadium),
-import './kartduel.js';  // a kart race (Playland's Race Track)
+import './kartduel.js';  // a kart race (Playland's Race Track),
+import './parkourrace.js'; // a Parkour race (the Obstacle Course, main world),
+import './bounceduel.js';  // Bounce-Back for two (the Mirror Palace's court),
+import './bumperduel.js';  // Bumper Cars for two (Playland's Funfair)
 import { createPlayTogether } from './playtogether.js';
 import { createSwaps } from './swaps.js'; // wave 17: gifts and trades
 import { createSwapUi } from './swapui.js'; // wave 17
@@ -760,7 +763,7 @@ function breakBlock(hit = target.block) {
   if (hit.id === B.CHEST) { openChest(hit); return; } // a closed chest opens instead of breaking
   if (game.portal.use(hit)) return; // T38a: a click on a door uses it, like the Wake Stone
   if (hit.id === B.WAKE_STONE) { game.realms.leave('stone'); return; } // T31: touching it wakes you up
-  if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast(BLOCKS[hit.id]?.wallText || world.protectedAt(hit.x, hit.y, hit.z)?.wallText || 'Gym walls are too strong to break!'); return; }
+  if (!world.editAllowed(hit.x, hit.y, hit.z, B.AIR)) { wallToast(BLOCKS[hit.id]?.wallText || world.protectedAt(hit.x, hit.y, hit.z)?.wallText || world.realm?.lockText || 'Gym walls are too strong to break!'); return; }
   // Natural blocks have no edit yet; a placed block does (T20: so placed gold ore and leaves never give cubes).
   const natural = !world.edits.has(world.index(hit.x, hit.y, hit.z));
   world.set(hit.x, hit.y, hit.z, B.AIR);
@@ -809,7 +812,7 @@ function placeBlock(hit = target.block) {
   const cur = world.get(x, y, z);
   if (!world.inBounds(x, y, z) || (cur !== B.AIR && cur !== B.WATER)) return;
   const id = game.hotbar[game.selected];
-  if (!world.editAllowed(x, y, z, id)) { wallToast(world.protectedAt(x, y, z)?.wallText || "You can't build inside a gym!"); return; } // T38a: a keep says its own words
+  if (!world.editAllowed(x, y, z, id)) { wallToast(world.protectedAt(x, y, z)?.wallText || world.realm?.lockText || "You can't build inside a gym!"); return; } // T38a: a keep says its own words
   if (id === B.DOORMAT && world.realm) { wallToast(world.realm.noHomeText || 'No homes in dreams! Build your home in your own world.'); return; } // T31
   if (isLimited(id) && !game.blockCounts[id]) { wallToast(`No ${BLOCKS[id].name} left! ${BLOCKS[id].getMore || 'Mine one in a cave wall, or break one you placed.'}`); return; }
   if (game.player.overlapsBlock(x, y, z)) return;

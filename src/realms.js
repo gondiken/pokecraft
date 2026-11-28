@@ -66,6 +66,7 @@ export const REALMS = {
   swirl: {
     id: 'swirl', name: 'Swirl', version: !worldOpen('portal') ? 4 : 6, sameCells: !worldOpen('portal') ? undefined : [4, 5], /* wave 18: version 6 has the Mirror Palace's frame (S5), deck and lift (every old cell is where it was) */ house: worldOpen('portal'), /* owner 2026-10-30: the Portal House opens on its own (OPEN_NOW), not only with all of wave 15 */ size: [160, 160], seedSalt: 0x5317, // 4 (2026-10-26): 11 frames, 12 bridge stones (the Wizard gives no star); 5 (T42): the Portal House in the north-east sky (every old cell is where it was, so version 4 edits and positions are kept: sameCells)
     terrain: 'swirlLand', biome: 'swirl',
+    locked: true, lockText: 'The Swirl stays just as it is. No breaking or building here!', // owner 2026-11-28: chapter 2's worlds are never changed
     showStars: true, doorName: 'Portal Door', doorVerb: 'go home', doorAction: 'Go home!', // T40: the HUD stars row and the words of the door home
     gravity: 1,                         // normal jumps: every way is walkable (stairs, decks, lifts)
     wild: { max: 4, every: 2 }, // owner 2026-10-27: fewer at once (creatures.js)
@@ -103,6 +104,7 @@ export function pictureRealm(d) {
     look: { sky: 0xbfe6ff, fog: [40, 150], time: null, weather: false, light: 0.95, still: true, stars: false },
     arriveYaw: 0, morning: false, lose: 'stay', showStars: true,
     parent: 'swirl', entrance: 'frame',
+    locked: true, lockText: `The ${name} stays just as it is. No breaking or building here!`, // owner 2026-11-28: chapter 2's worlds are never changed (world.js editAllowed; old edits there are dropped)
     clock: `🖼️ ${name}`, travelText: 'Into the picture...', travelIcon: '🖼️',
     enterText: `Whoosh! You stepped into the ${name}!`,
     arriveHint: 'Find the Boss and win the star! The way back is right behind you.',
@@ -225,7 +227,7 @@ if (worldOpen('wizard')) REALMS.wizard = pictureRealm({ id: 'wizard', name: "Wiz
 // Chapter 3 (plans/chapter3-world.md, ?preview only): the Wizard's very first drawing, under his tower. Its Paper Door (portal.js) is drawn only
 // for the Wizard's Ally. Not registered at all without ?preview (a save made inside it then loads in the main world). The whole page is a
 // keep (nothing can be built: no realm edits). A lost fight rests you at Inkpot Camp (`lose: 'stay'`, world.rests).
-if (PREVIEW) REALMS.wobble = pictureRealm({ id: 'wobble', name: 'Wobbleland', seedSalt: 0x30bb1e, size: [WOBBLE_SIZE, WOBBLE_SIZE], terrain: 'wobbleLand',
+if (PREVIEW) REALMS.wobble = pictureRealm({ id: 'wobble', locked: false /* chapter 3: its own keep rules */, name: 'Wobbleland', seedSalt: 0x30bb1e, size: [WOBBLE_SIZE, WOBBLE_SIZE], terrain: 'wobbleLand',
   arrive: [WOBBLE_CAMP.x, WOBBLE_CAMP.z + 2], arriveYaw: 0, biome: 'wobble', entrance: 'paper', spawns: { wobble: FREED_SPAWNS, wobbleHills: [], wobbleLake: freedSpawns('lake'), wobbleCave: freedSpawns('cave'), cave: [] }, wild: { max: 8, every: 1.5 }, // (owner 2026-11-11: more creatures)
   walk: [B.GRASS, B.SNOW, B.ICE, B.GRAVEL], crewAim: false, be: true /* chapter 3: be your creature here (being.js) */, zoneNames: { wobble: 'Wobbleland · Puddle Meadow', wobbleHills: 'Wobbleland · Bumpy Hills', wobbleLake: 'Wobbleland · Slippy Lake', wobbleCave: 'Wobbleland · Glowcap Caves' }, // B (owner 2026-11-11): riding and flying allowed
   look: { sky: 0xfff3c4, fog: [60, 190], time: null, weather: false, light: 1, still: true, stars: false, wobble: true },

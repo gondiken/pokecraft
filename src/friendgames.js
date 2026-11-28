@@ -9,6 +9,9 @@
 // not have is answered with "gone" (the other side stops within a second or two), and a game that ended by its own rules
 // repeats its last word for a while (a lost result still arrives).
 //
+// A kind's `place` may be 'main' too (the Parkour race on the Obstacle Course): the trip goes home to the main world (where you left
+// it); the kind's own start() puts both on their start spots, there or when nobody had to travel.
+//
 // A kind with a `place` (owner 2026-11-28: football, basketball and the kart race live in Playland) can be asked for ANYWHERE
 // once the host has finished chapter 1 (the Champion's title: `game.champion`, a guest reads the host avatar's `champ`): both
 // say yes, both TRIP to the host's Playland (realms.js `trip` / `tripFollow`: the host goes first with its own world, the guest
@@ -20,7 +23,7 @@
 import { sound } from './sound.js';
 import { el } from './util.js';
 
-export const PLAY = { VERSION: 3, answer: 30, beat: 1, lost: 10, probe: 2.5, tomb: 30, near: 30, toastGap: 3, tripLost: 60, tripMax: 60, tripTries: 4, tripWait: 1.5 };
+export const PLAY = { VERSION: 4, answer: 30, beat: 1, lost: 10, probe: 2.5, tomb: 30, near: 30, toastGap: 3, tripLost: 60, tripMax: 60, tripTries: 4, tripWait: 1.5 };
 export const FRIEND_GAMES = {}; // id -> def, in the friend menu's order
 export const addFriendGame = def => { FRIEND_GAMES[def.id] = def; return def; };
 
@@ -226,7 +229,7 @@ export function createFriendGames(game) {
       return Object.values(FRIEND_GAMES).filter(shown).map(d => {
         const why = s ? 'Finish your game first!' : returning ? 'Wait a moment...' : whyNot(d, a);
         const sub = why && !s ? why.replace(/!$/, '.') : canGo(d) ? `You both go to ${d.where} and back.` : typeof d.sub === 'function' ? d.sub(game) : d.sub || '';
-        return { id: d.id, icon: d.icon, name: d.name, sub, why, go: () => self.invite(d.id, a) };
+        return { id: d.id, icon: d.icon, art: d.art ?? d.id, name: d.name, sub, why, go: () => self.invite(d.id, a) };
       });
     },
 

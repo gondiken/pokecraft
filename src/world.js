@@ -554,7 +554,9 @@ export class World {
   // breaking it (cave chests; T23's key chests).
   editAllowed(x, y, z, id) {
     if (BLOCKS[this.get(x, y, z)]?.fixed) return false; // T35: Bounce Blocks can't be broken or replaced by anybody
-    return !this.protectedAt(x, y, z) || (this.get(x, y, z) === B.CHEST && id === B.CHEST_OPEN);
+    const chest = this.get(x, y, z) === B.CHEST && id === B.CHEST_OPEN;
+    if (this.realm?.locked) return chest; // owner 2026-11-28: chapter 2's worlds (the Swirl, every Picture World) stay as they are: no breaking, no building
+    return !this.protectedAt(x, y, z) || chest;
   }
 
   // Hides the chunks past the fog (they are fog-coloured there anyway): fewer draw calls on the big map.
