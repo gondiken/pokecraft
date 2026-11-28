@@ -8,6 +8,7 @@ import { SPECIES } from './species.js';
 import { portrait } from './ui.js';
 import { creatureChips } from './abilitychips.js'; // chapter 3 step B: the trade cards show what a creature can do
 import { el } from './util.js';
+import { friendSvg } from './friendicons.js'; // owner 2026-11-28: drawn pictures, not emojis
 import { PARCELS, canGive, creatureItem } from './swapcore.js';
 
 export function createSwapUi(game) {
@@ -26,10 +27,11 @@ export function createSwapUi(game) {
     const near = !!hs?.nearby?.().includes(a);
     const tradeWhy = game.swaps.whyNot(a);
     note = el('p', { class: 'fm-note' }, '');
-    const choice = (id, icon, word, sub, why, go) => el('button', {
+    const picture = (art, icon) => { const svg = friendSvg(art); const s = el('span', { class: 'fm-icon' }, svg ? '' : icon); if (svg) s.innerHTML = svg; return s; };
+    const choice = (id, icon, word, sub, why, go, art = id) => el('button', {
       class: `fm-btn${why ? ' dim' : ''}`, 'data-friend': id,
       onclick: () => { if (why) { note.textContent = why; return; } game.closeFriend?.(); go(); },
-    }, el('span', { class: 'fm-icon' }, icon), el('span', { class: 'fm-text' }, el('b', {}, word), sub ? el('small', {}, sub) : ''));
+    }, picture(art, icon), el('span', { class: 'fm-text' }, el('b', {}, word), sub ? el('small', {}, sub) : ''));
     document.getElementById('friend-body').replaceChildren(
       el('h2', {}, `👋 ${a.name}`),
       el('p', { class: 'fm-sub' }, 'What do you want to do?'),
@@ -37,7 +39,7 @@ export function createSwapUi(game) {
         choice('battle', '⚔️', 'Battle', 'Your creatures stay safe.', '', () => game.duels.challenge(a)),
         choice('trade', '🔁', 'Trade', 'Swap creatures, or give a present.', tradeWhy, () => game.swaps.invite(a)),
         choice('hide', '🙈', 'Hide and seek', near ? '' : `Walk closer to ${a.name} first.`, near ? '' : `Walk closer to ${a.name} first!`, () => hs.invite(a)),
-        ...games.map(r => choice(r.id, r.icon, r.name, r.sub, r.why, r.go))),
+        ...games.map(r => choice(r.id, r.icon, r.name, r.sub, r.why, r.go, r.art))),
       note);
   }
 

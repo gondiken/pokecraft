@@ -186,6 +186,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
 | `src/swapcore.js` | Wave 17, pure save rules of gifts and trades: `SWAP`, `PARCELS` / `addParcel` (only `creature` built), `cleanCreature`, `loadSwaps`, `commitOut` / `receive` / `settle` |
 | `src/swaps.js` | Wave 17 `createSwaps(game, { save })` -> `game.swaps`: the trade session both players share (`invite`, `put`, `setReady`; a side may be Nothing = a present), the `swap` messages (`hi`, `ask`, `yes` / `no`, `offer`, `ready`, `leave`, `give`, `got`), re-sends, `drop` / `info()` for tests |
 | `src/swapui.js` | Wave 17 `createSwapUi(game)` -> `game.swapUi`: the friend menu `#friend` (Battle / Trade / Hide and seek) and the team screen's trade mode (`view` = `ui.tradeView`: the trade bar, each card's Offer button) |
+| `src/friendicons.js` | Owner 2026-11-28, pure: the friend menu's drawn pictures (`FRIEND_ART` by choice id: battle, trade, hide, tag, football, hoops, race, parkour, bounce, bumper; `friendSvg(id, px)`, the ability badges' sticker style); a kind's `art` (default its id) picks one, no picture = its emoji. The menu is two columns of small tiles (style.css `#friend .fm-list.many`) |
 | `src/traits.js` | T26 traits (no imports): `TRAITS` (only `rideable`), `hash32`, `drawTraits`, `cleanTraits`, `fixTraits`, `gainTraits`, `hasTrait` |
 | `src/riding.js` | T27 riding: `RIDE`, `rideKind`, `rideSpecies`, `createRiding` -> `game.riding` |
 | `src/weather.js` | Weather: shared phase, per-biome kind, particles, rainbow, lightning, spawn boosts (`game.weather.set` / `skip` / `info` for tests) |
@@ -260,7 +261,7 @@ world with `W/D/data/ground/index/inBounds/get`) are run in Node by their specs.
   `protect`/`area`/`trainerPositions` (`world.levelSite` helps; `world.stubSlotGym` is a stand-in).
 - **Gym protection:** every gym and `world.tower` has `protect: [{x0,x1,y0,y1,z0,z1}]`; `world.editAllowed(x, y, z, id)` is the one
   rule (opening a chest is allowed), used by `breakBlock`/`placeBlock`, visitors' `block` messages and `applyEdits`. **A new gym
-  builder must set `protect`.** Realms add `world.keeps` (`[{ name, protect, wallText, rideIn? }]`, nobody builds there). `World.cull` hides far chunks.
+  builder must set `protect`.** Realms add `world.keeps` (`[{ name, protect, wallText, rideIn? }]`, nobody builds there). **Owner 2026-11-28: chapter 2's worlds are locked** (realm def `locked: true` + `lockText`: the Swirl and every `pictureRealm` but Wobbleland): `editAllowed` refuses every edit there but opening a chest, so nothing can be broken or built and old saved edits there are dropped on load; a game's own blocks go through `setLive` / `LiveCells` as always. `World.cull` hides far chunks.
 - **Caves** (`caves.js`) are carved right after the terrain loop and before plants, from the seed only, only below `ground - 3`, so
   the surface, gyms, tower and builds stay; only 6-8 entrance holes break the surface. `world.ground` = natural height,
   `world.top` = highest sky-blocking block, `skyAt()` / `underground()` say how dark a place is. `generate({ caves: false })` in tests.
