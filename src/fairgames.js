@@ -71,12 +71,12 @@ export const BALLOON_STICK = { back: 0.9, y: 11 + 2.5 };
 export const balloonOfBot = bot => ({ x: bot.x - bot.hx * BALLOON_STICK.back, y: BALLOON_STICK.y, z: bot.z - bot.hz * BALLOON_STICK.back });
 
 // Does a touch pop the bot's balloon? Only from behind (within 55 degrees of its back) and at speed.
-export function bumpPops(car, bot) {
+export function bumpPops(car, bot, cone = BUMPER.behind) { // (cone: Bumper Cars for two passes its own; the Funfair's game never does)
   const dx = car.x - bot.x, dz = car.z - bot.z, d = Math.hypot(dx, dz);
   if (d >= BUMPER.contact || d < 1e-6) return false;
   const behind = -(dx * bot.hx + dz * bot.hz) / d;       // cos of the angle between the bot's backwards direction and the way to you
   const toward = -(car.vx * dx + car.vz * dz) / d;       // your speed towards the bot
-  return behind >= BUMPER.behind && toward >= BUMPER.toward;
+  return behind >= cone && toward >= BUMPER.toward;
 }
 
 // A bumper car (2D disc physics in 1/120 s sub-steps). `ctx` = { wish: { x, z } (0..1 stick, world directions), hard, popped: [bool x6],
@@ -119,7 +119,7 @@ export class BumperCar {
     for (const o of ctx.movers || []) {
       const dx = this.x - o.x, dz = this.z - o.z, d = Math.hypot(dx, dz);
       if (d >= BUMPER.contact) continue;
-      if (o.balloon && bumpPops(this, o)) ev.push({ type: 'pop', mover: o.id });
+      if (o.balloon && bumpPops(this, o, o.cone)) ev.push({ type: 'pop', mover: o.id });
       const nx = d > 1e-6 ? dx / d : 1, nz = d > 1e-6 ? dz / d : 0;
       const vn = (this.vx - o.vx) * nx + (this.vz - o.vz) * nz;
       if (vn < 0) { this.vx -= (1 + BUMPER.botE) * vn * nx; this.vz -= (1 + BUMPER.botE) * vn * nz; if (-vn > 1.5) ev.push({ type: 'hit', kind: 'friend', speed: -vn }); }
