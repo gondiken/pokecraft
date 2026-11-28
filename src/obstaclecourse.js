@@ -257,6 +257,8 @@ export class CourseLive {
     this.shove = null;          // { axis, sign, left }
     this.wasAir = false;
     this.lastTop = null;
+    this.hush = false; // (after a race: the next "You left" goes unsaid)
+    this.race = null; // owner 2026-11-28: a Parkour race for two (parkourrace.js): { onFlag(k), onFinish(seconds), onLeave() }; null = the course as always
     // Every timed element with its cells, the middle of its column and the last drawn state.
     const mid = cells => [cells.reduce((a, c) => a + c[0], 0) / cells.length, cells.reduce((a, c) => a + c[2], 0) / cells.length];
     this.els = [];
@@ -280,6 +282,23 @@ export class CourseLive {
       this.ghost.frustumCulled = false;
       scene.add(this.ghost);
     }
+    this.draw();
+  }
+
+  /* ---- owner 2026-11-28: a Parkour race for two friends (parkourrace.js). With no race, nothing below changes the course. ---- */
+  startRace(race) { this.race = race; this.resetRun(); }
+  // Go! The clock starts at 0 on both screens, so every blink, zap and pusher is in the same state for both.
+  goRace() { if (this.race) this.resetRun(); }
+  endRace() {
+    if (!this.race) return;
+    this.race = null;
+    this.hush = true; // your flags stay lit after a race; walking off later starts them over quietly (the race said goodbye)
+  }
+  resetRun() {
+    this.clock = 0;
+    this.crumbleAt.clear();
+    this.reached = 0; this.last = -1;
+    this.shove = null; this.wasAir = false; this.lastTop = null; this.hush = false;
     this.draw();
   }
 
@@ -336,11 +355,13 @@ export class CourseLive {
     if (!p) return;
     // Walked right out of the course (the mat is inside, so a fall is not leaving): the flags start over.
     const a = this.gym.area;
-    if (this.reached > 0 && !g.inBattle && (p.pos.x < a.x0 || p.pos.x >= a.x1 + 1 || p.pos.z < a.z0 || p.pos.z >= a.z1 + 1)) {
+    if (this.race) { if (!g.inBattle && (p.pos.x < a.x0 || p.pos.x >= a.x1 + 1 || p.pos.z < a.z0 || p.pos.z >= a.z1 + 1)) this.race.onLeave(); } // a Parkour race: parkourrace.js decides
+    else if (this.reached > 0 && !g.inBattle && (p.pos.x < a.x0 || p.pos.x >= a.x1 + 1 || p.pos.z < a.z0 || p.pos.z >= a.z1 + 1)) {
       this.reached = 0;
       this.last = -1;
       this.draw();
-      g.ui?.toast('You left the Obstacle Course. Next time you start from the beginning!');
+      if (!this.hush) g.ui?.toast('You left the Obstacle Course. Next time you start from the beginning!');
+      this.hush = false;
     }
     // A shove in progress (walls stop it).
     if (this.shove) {
@@ -411,6 +432,14 @@ export class CourseLive {
       if (k < 0 || k === this.last) return;
       this.last = k;
       const cp = g.checkpoints[k], told = this.game.toldOnce;
+      if (k > this.reached && this.race) { // a Parkour race: no hints, no trainers, the finish flag ends my run
+        this.reached = k;
+        this.draw();
+        sound.play('checkpoint');
+        this.race.onFlag(k);
+        if (k === g.checkpoints.length - 1) this.race?.onFinish(this.clock);
+        return;
+      }
       if (k > this.reached) {
         this.reached = k;
         this.draw();
@@ -430,7 +459,7 @@ export class CourseLive {
     const c = g.course;
     if (x < c.x0 || x > c.x1 || z < c.z0 || z > c.z1 || y < c.y0 || y > c.y1) return;
     // With the badge, jumping down from the finish is the way out (no exit pad: kids stepped on it before the battle).
-    if (this.reached === g.checkpoints.length - 1 && this.game.badges?.includes(g.def.id)) {
+    if (!this.race && this.reached === g.checkpoints.length - 1 && this.game.badges?.includes(g.def.id)) {
       this.reached = 0;
       this.last = -1;
       this.draw();
