@@ -834,9 +834,10 @@ function tapAt(x, y) {
   tapRay.setFromCamera(new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1), camera);
   const { origin, direction } = tapRay.ray;
   const reach = REACH + 4;
-  const npc = game.npcs.pick(origin, direction, reach);
-  const wild = game.creatures.pick(origin, direction, reach);
-  const other = game.mp.pick(origin, direction, reach);
+  const only = game.friendGames.only; // (a game for two runs: a tap does the game's own thing too, see updateTarget)
+  const npc = only ? null : game.npcs.pick(origin, direction, reach);
+  const wild = only ? null : game.creatures.pick(origin, direction, reach);
+  const other = only ? only.pick(game.mp.pick(origin, direction, reach)) : game.mp.pick(origin, direction, reach);
   const block = raycastVoxel(game.world, origin, direction, reach);
   const wall = block ? block.t : Infinity;
   if (other && other.dist < wall && (!npc || other.dist < npc.dist) && (!wild || other.dist < wild.dist)) { if (!game.hideSeek.tag(other.player) && !game.friendGames.tag(other.player)) game.openFriend(other.player); } // T30; wave 17: the friend menu
@@ -1210,9 +1211,12 @@ const isRematch = npc => npc.kind === 'leader' && !!npc.gym && game.badges.inclu
 function updateTarget() {
   const origin = game.player.eyePos;
   const dir = game.player.forward;
-  const hitWild = game.creatures.pick(origin, dir, REACH + 1);
-  const hitNpc = game.npcs.pick(origin, dir, REACH + 1);
-  const hitPlayer = game.mp.pick(origin, dir, REACH + 1);
+  // Owner 2026-11-28: while a game for two runs, E and the action button do the game's own thing and nothing else: a friend
+  // running past, a person or a wild creature under the crosshair is not picked (tag picks the friend: touching them is the game).
+  const only = game.friendGames.only;
+  const hitWild = only ? null : game.creatures.pick(origin, dir, REACH + 1);
+  const hitNpc = only ? null : game.npcs.pick(origin, dir, REACH + 1);
+  const hitPlayer = only ? only.pick(game.mp.pick(origin, dir, REACH + 1)) : game.mp.pick(origin, dir, REACH + 1);
   const hitBlock = raycastVoxel(game.world, origin, dir, REACH);
   const blockDist = hitBlock ? hitBlock.t : Infinity;
   target.player = hitPlayer && hitPlayer.dist < blockDist && (!hitNpc || hitPlayer.dist < hitNpc.dist)

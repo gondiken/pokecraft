@@ -116,6 +116,12 @@ export class TagGame extends FriendGame {
     const t = performance.now();
     if (t - this.fenceAt > TAG.fenceToast * 1000) { this.fenceAt = t; this.toast("That's the edge of the play area!"); }
   }
+  // Owner 2026-11-28: the catcher's arrow points at the runner (the play area is big). The runner keeps the usual arrow.
+  aim() {
+    const r = this.round, a = this.avatar(), pn = this.partnerName;
+    if (!this.iAmIt || r.over || !a || a.here === false) return null;
+    return { x: a.pos.x, z: a.pos.z, text: (arrow, m) => (r.frozen > 0 ? `🏃 Count to ${TAG.freeze}! ${pn} is ${arrow} ${m}m away` : `🏃 Catch ${pn}! ${arrow} ${m}m`) };
+  }
   chip() {
     const r = this.round, pn = this.partnerName, sec = id => `${Math.round(r.itTime[id])}s`;
     const phase = this.iAmIt ? (r.frozen > 0 ? `You are IT! Count: ${Math.ceil(r.frozen)}` : `You are IT! Catch ${pn}!`) : (r.frozen > 0 ? `${pn} is IT! Run! (${Math.ceil(r.frozen)})` : `${pn} is IT! Run!`);
@@ -129,6 +135,7 @@ export class TagGame extends FriendGame {
   prompt(avatar, how) { return this.inReach(avatar) ? `${avatar.name} · ${how} to tag!` : `Tag with ${avatar.name}`; }
   action(avatar) { return this.inReach(avatar) ? 'Tag!' : ''; }
   get noRide() { return 'No riding in tag. Run!'; }
+  get usesFriend() { return true; }
   info() { return { ...this.round.state(), left: this.round.left, center: this.center, me: this.me, sign: !!this.sign }; }
 }
 

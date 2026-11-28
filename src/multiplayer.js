@@ -105,6 +105,7 @@ class Avatar {
     this.rideFit = null;
     this.rideSpecies = null;
     this.isDueling = false;
+    this.inGame = false; // a game for two with you (friendgames.js): no lead creature trotting behind them (owner 2026-11-28)
     this.heard = 0;
     this.t = 0;
   }
@@ -114,6 +115,7 @@ class Avatar {
     this.yaw = info.yaw;
     this.frame = Number.isInteger(info.f) && info.f > 0 && info.f < FRAMES.length ? info.f : 0; // Cube Planets: the face they stand on (old clients send none: upright)
     this.heard = 0;
+    this.champ = !!info.champ; // the host finished chapter 1 (the Champion's title): Playland's games can be asked for anywhere
     const leadPaint = Array.isArray(info.leadPaint) ? info.leadPaint.slice(0, 3) : null; // the Custom guardians' paint (old games send none: default colours)
     if (info.lead !== this.leadSpecies || String(leadPaint) !== String(this.leadPaint)) this.setLead(info.lead, leadPaint);
     const r = rideSpecies(info.ride);
@@ -135,7 +137,7 @@ class Avatar {
         this.rideSpecies = species;
       } catch { this.rideModel = null; this.rideSpecies = species; }
     }
-    if (this.lead) this.lead.visible = !this.isDueling && !this.rideModel;
+    if (this.lead) this.lead.visible = !this.isDueling && !this.inGame && !this.rideModel;
   }
 
   setLead(species, paint = null) {
@@ -191,7 +193,7 @@ class Avatar {
     if (this.lead && this.hiding) this.lead.visible = false;
     this.model.visible = this.here && !this.unseen; // T31: a player in another place is not drawn (T30: nor a hider in the head start)
     if (!this.here) { if (this.lead) this.lead.visible = false; if (this.rideModel) this.rideModel.visible = false; }
-    else { if (this.rideModel) this.rideModel.visible = true; if (this.lead && !this.hiding) this.lead.visible = !this.isDueling && !this.rideModel; }
+    else { if (this.rideModel) this.rideModel.visible = true; if (this.lead && !this.hiding) this.lead.visible = !this.isDueling && !this.inGame && !this.rideModel; }
   }
 
   dispose() {
@@ -425,6 +427,7 @@ export class Multiplayer {
       f: g.player.frameNo?.() || undefined, // Cube Planets: the face you stand on (0-23; only off upright, only in a world with gravityAt)
       lead: g.party.find(c => c.hp > 0)?.species ?? g.party[0]?.species ?? null,
       leadPaint: (g.party.find(c => c.hp > 0) ?? g.party[0])?.paint || undefined, // only when the lead is a designed guardian
+      champ: this.role === 'host' && g.champion ? 1 : undefined, // friendgames.js: a trip to the host's Playland
       time: this.role === 'host' ? +g.time.toFixed(4) : undefined,
       weather: this.role === 'host' ? g.weather?.state() : undefined,
     });

@@ -7,7 +7,10 @@
 //            one ball on both screens, a touch takes it, goals by the leader and by the friend, to 3), basketball (the ball in
 //            their hands, a basket), a kart race (both karts on the grid, laps, the times, the winner), nothing saved
 //   ipad   : two iPads: the menu fits with seven choices, taps ask and answer, the action button says Tag!
-// FRIEND_ONLY=rules|tag|sports|ipad
+//   trip   : two browsers far from Playland (owner 2026-11-28): no stadium games until the host is a Champion, then all seven
+//            choices in the main world; football asked by the guest: both land in the host's Playland, play, and are back on
+//            the very spot they stood on; a kart race the same; from the Swirl and back to the Swirl
+// FRIEND_ONLY=rules|tag|sports|ipad|trip
 import { devices } from 'playwright';
 import { openPair, newGame, click, pause } from '../helpers.mjs';
 
@@ -250,6 +253,11 @@ export default async function ({ browser, base, t }) {
     t.ok(await waitFor(B, () => { const h = document.getElementById('hs-hud'); return !h.classList.contains('hot') && /Dad is IT! Run!/.test(h.textContent); }), 'Kid\'s chip says "Dad is IT! Run!"');
     t.ok(await waitFor(B, () => window.pokecraft.friendGames.state().info.sign && [...window.pokecraft.mp.others.values()][0].model.children.some(c => c.userData.tagIt)), 'Kid sees an IT! sign over Dad');
     t.ok(!(await fg(A)).info.sign, 'Dad sees no sign over Kid');
+    // owner 2026-11-28: the catcher's arrow points at the runner; the runner keeps the usual arrow
+    t.ok(await waitFor(A, () => /^🏃 (Count to 3! Kid is [↑↖←↙↓↘→↗] \d+m away|Catch Kid! [↑↖←↙↓↘→↗] \d+m)$/.test(window.pokecraft.ui.guideText)), `Dad (IT): the arrow leads to Kid ("${await A.evaluate(() => window.pokecraft.ui.guideText)}")`);
+    t.ok(await B.evaluate(() => !/Catch|Count to/.test(window.pokecraft.ui.guideText) && /Next:/.test(window.pokecraft.ui.guideText)), `Kid (running): the usual arrow ("${await B.evaluate(() => window.pokecraft.ui.guideText)}")`);
+    // owner 2026-11-28: no lead creature trots behind the friend during a game
+    t.ok(await waitFor(A, () => { const a = [...window.pokecraft.mp.others.values()][0]; return a.inGame && a.lead && !a.lead.visible; }) && await waitFor(B, () => { const a = [...window.pokecraft.mp.others.values()][0]; return a.inGame && a.lead && !a.lead.visible; }), 'during the game nobody sees the friend\'s lead creature');
     await shot(B, 'tag-it-sign.png'); await shot(A, 'tag-counting.png');
     // standing right beside Kid while counting does not tag
     await A.evaluate(() => { window.pokecraft.friendGames.play.round.frozen = 3; }); // (the screenshots took a while: count again)
@@ -277,8 +285,10 @@ export default async function ({ browser, base, t }) {
     const pr = await waitFor(B, () => /Dad · click or E to tag!/.test(document.getElementById('prompt').textContent), null, 8000);
     if (!pr) console.log('  debug prompt:', await B.evaluate(() => { const g = window.pokecraft, k = [...g.mp.others.values()][0]; return [document.getElementById('prompt').textContent, g.friendGames.state().info, k.pos.distanceTo(g.player.pos), g.friendGames.prompt(k, 'x')]; }));
     t.ok(pr, 'looking at Dad from close by: "Dad · click or E to tag!"');
-    await B.evaluate(() => window.pokecraft.interact());
-    t.ok(await both(A, B, () => window.pokecraft.friendGames.state().info.tags === 2), 'a click on Dad tags him');
+    const clk = await B.evaluate(() => { const g = window.pokecraft, k = [...g.mp.others.values()][0], pl = g.friendGames.play; const before = pl.info(); const did = g.interact(); return { did, before, claim: pl.claim, reach: pl.inReach(k), d: k.pos.distanceTo(g.player.pos) }; });
+    const clicked = await both(A, B, () => window.pokecraft.friendGames.state().info.tags === 2);
+    if (!clicked) console.log('  (click to tag:', JSON.stringify(clk), '| Dad', JSON.stringify((await fg(A)).info), '| Kid', JSON.stringify((await fg(B)).info), ')');
+    t.ok(clicked, 'a click on Dad tags him');
     t.ok(await B.evaluate(() => document.getElementById('friend').classList.contains('hidden')), 'the click did not open the friend menu');
     // the play area and battles
     // (Dad is IT and counting: wait it out first)
@@ -312,6 +322,7 @@ export default async function ({ browser, base, t }) {
     const clean = await Promise.all([A, B].map(p => p.evaluate(() => document.getElementById('hs-hud').classList.contains('hidden') && window.pokecraft.player.speedK === 1
       && [...window.pokecraft.mp.others.values()].every(a => !a.model.children.some(c => c.userData.tagIt)))));
     t.ok(clean[0] && clean[1], 'the chip and the IT! sign are gone, everybody walks at their own speed');
+    t.ok(await waitFor(A, () => { const a = [...window.pokecraft.mp.others.values()][0]; return !a.inGame && a.lead?.visible; }) && await A.evaluate(() => /Next:/.test(window.pokecraft.ui.guideText)), 'afterwards the friend\'s lead creature is back, and the usual arrow');
     await A.evaluate(SHORT); await B.evaluate(SHORT);
 
     // real keys through the game's own loop: IT stands still while counting, walks afterwards
@@ -324,7 +335,7 @@ export default async function ({ browser, base, t }) {
     await both(A, B, () => window.pokecraft.friendGames.active);
     await A.mouse.click(550, 300); // back into the game (the mouse is caught again)
     await waitFor(A, () => window.pokecraft.playing(), null, 8000);
-    const x0 = await A.evaluate(() => { const p = window.pokecraft.player; p.yaw = Math.PI; p.pitch = 0; return [p.pos.x, p.pos.z]; });
+    const x0 = await A.evaluate(() => { const g = window.pokecraft, p = g.player; p.yaw = Math.PI; p.pitch = 0; g.friendGames.play.round.frozen = 3; return [p.pos.x, p.pos.z]; }); // (count from here: getting the mouse back took a moment)
     await A.keyboard.down('KeyW');
     await A.waitForTimeout(1200);
     const x1 = await A.evaluate(() => [window.pokecraft.player.pos.x, window.pokecraft.player.pos.z, window.pokecraft.friendGames.state().info.frozen]);
@@ -354,7 +365,14 @@ export default async function ({ browser, base, t }) {
     // a) the start never arrives: the next heartbeat starts the friend's game
     await drop(A, 'start');
     await invite(A, B, 'tag');
-    t.ok(await both(A, B, () => window.pokecraft.friendGames.active) && await A.evaluate(() => window.__dropped.length === 1), 'a lost start: the friend still joins, a second later');
+    t.ok(await both(A, B, () => window.pokecraft.friendGames.state().started) && await A.evaluate(() => window.__dropped.length === 1), 'a lost start: the friend\'s game still starts, a second later');
+    await undrop(A);
+    await drop(A, 'open');
+    await A.evaluate(() => window.pokecraft.friendGames.stop());
+    await both(A, B, () => !window.pokecraft.friendGames.active);
+    await A.waitForTimeout(1200);
+    await invite(A, B, 'tag');
+    t.ok(await both(A, B, () => window.pokecraft.friendGames.state().started) && await A.evaluate(() => window.__dropped.length === 1), 'a lost "open": the start itself brings the friend in');
     const s1 = [await fg(A), await fg(B)];
     t.ok(s1[1].info.it === s1[0].info.me && Math.abs(s1[0].info.center[0] - s1[1].info.center[0]) < 0.01 && !s1[1].leader, 'and it is the same game: Dad is IT, the same play area');
     await undrop(A);
@@ -525,6 +543,19 @@ export default async function ({ browser, base, t }) {
     await waitFor(B, () => window.pokecraft.friendGames.state().info.q > 1001, null, 10000);
     const wallB = await B.evaluate(() => { window.__steps(60); return { max: window.__maxX, info: window.pokecraft.friendGames.state().info }; });
     t.ok(wallB.max < 63.5 && wallB.max > 60, `and on Kid's screen it never passes Kid either (it gets to x ${wallB.max.toFixed(2)})`);
+    // owner 2026-11-28: during a game E does the game's own thing and nothing else: Kid stands right in the crosshair, behind the ball
+    await B.evaluate(() => { const p = window.pokecraft.player; p.pos.set(60, 11, 165); p.vel.set(0, 0, 0); });
+    await waitFor(A, () => Math.abs([...window.pokecraft.mp.others.values()][0].pos.x - 60) < 0.03);
+    await A.evaluate(() => {
+      const g = window.pokecraft, m = g.friendGames.play, p = g.player;
+      m.ball.reset([58, 11.401, 165]); m.shared.take();
+      p.pos.set(56.6, 11, 165); p.vel.set(0, 0, 0); p.yaw = -Math.PI / 2; p.pitch = 0;
+    });
+    const picked = await A.evaluate(() => { const g = window.pokecraft, hit = g.mp.pick(g.player.eyePos, g.player.forward, 6); return !!hit; });
+    t.ok(picked && await waitFor(A, () => /Hold E and let go to kick/.test(document.getElementById('prompt').textContent), null, 10000), `Kid is right under Dad's crosshair, and still the prompt is the ball's ("${await A.evaluate(() => document.getElementById('prompt').textContent)}")`);
+    const eKick = await A.evaluate(() => { const g = window.pokecraft, S = window.__S; const did = g.interact(true); const held = !!S.held; g.gymLive.release(g.player);
+      return { did, held, menu: !document.getElementById('friend').classList.contains('hidden'), vx: g.friendGames.play.ball.vel.x }; });
+    t.ok(eKick.did && eKick.held && !eKick.menu && eKick.vx > 0, `E kicks; it never opens the friend menu (${JSON.stringify(eKick)})`);
     // Dad (the leader) takes it and scores with a real hold and let go
     const kick = (page, x, dir, hold = 0.6) => page.evaluate(([x, dir, hold]) => {
       const g = window.pokecraft, m = g.friendGames.play, S = window.__S, p = g.player;
@@ -720,7 +751,139 @@ export default async function ({ browser, base, t }) {
     await shot(TB, 'tag-ipad.png');
     await TA.evaluate(() => window.pokecraft.friendGames.stop());
     t.ok(await both(TA, TB, () => !window.pokecraft.friendGames.active), 'iPad: Stop ends it');
+    // football asked on the tablets in the main world (owner 2026-11-28): the trip, and on the pitch a tap and the round button only kick
+    await TA.evaluate(() => { const g = window.pokecraft; g.champion = true; g.mp.sendState(); });
+    await waitFor(TB, () => window.pokecraft.mp.hostAvatar?.champ === true);
+    await standAt(TA, 0); await standAt(TB, 3);
+    await TA.waitForTimeout(1500);
+    const ipad0 = await TB.evaluate(() => { const p = window.pokecraft.player.pos; return [p.x, p.y, p.z]; });
+    await openMenu(TA);
+    await TA.tap('#friend [data-friend="football"]');
+    t.ok(await waitFor(TB, () => !document.getElementById('ask').classList.contains('hidden') && /You both go to the Ball Stadium and back\./.test(document.getElementById('ask-text').textContent)), 'iPad: football asked in the main world says where it goes');
+    await TB.tap('#ask-yes');
+    const inPlay = page => waitFor(page, () => window.pokecraft.place === 'playland' && window.pokecraft.friendGames.state().info?.phase === 'play', null, 240000);
+    t.ok(await inPlay(TA) && await inPlay(TB), 'iPad: both land on the pitch in Playland and the match runs');
+    await TB.evaluate(() => { const p = window.pokecraft.player; p.pos.set(54, 11, 162); p.vel.set(0, 0, 0); });
+    await waitFor(TA, () => Math.abs([...window.pokecraft.mp.others.values()][0].pos.x - 54) < 0.03);
+    await TA.evaluate(() => {
+      const g = window.pokecraft, m = g.friendGames.play, p = g.player;
+      m.ball.reset([52, 11.401, 162]); m.shared.take();
+      p.pos.set(50.6, 11, 162); p.vel.set(0, 0, 0); p.yaw = -Math.PI / 2; p.pitch = 0;
+    });
+    t.ok(await waitFor(TA, () => document.getElementById('btn-act').textContent.trim() === 'Kick!' && !document.getElementById('btn-act').classList.contains('dim'), null, 15000), `iPad: the friend stands in the crosshair, the round button still says "Kick!" ("${await TA.evaluate(() => document.getElementById('btn-act').textContent.trim())}")`);
+    await shot(TA, 'match-ipad-kick.png');
+    const vp = TA.viewportSize();
+    await TA.touchscreen.tap(vp.width / 2, vp.height / 2); // a tap right on the friend
+    await TA.waitForTimeout(600);
+    t.ok(await TA.evaluate(() => document.getElementById('friend').classList.contains('hidden') && !window.pokecraft.ui.panelOpen), 'iPad: a tap on the friend does not open the friend menu during the match');
+    const q0 = (await fg(TA)).info.q;
+    await TA.tap('#btn-act');
+    t.ok(await waitFor(TA, q => { const i = window.pokecraft.friendGames.state().info; return i && (i.q > q || i.ball.vx > 0.5); }, q0, 15000), 'iPad: the round button kicks the ball');
+    await TA.evaluate(() => window.pokecraft.friendGames.stop());
+    t.ok(await waitFor(TA, () => window.pokecraft.place === 'main' && !window.pokecraft.friendGames.tripping, null, 240000) && await waitFor(TB, () => window.pokecraft.place === 'main' && !window.pokecraft.friendGames.tripping, null, 240000), 'iPad: Stop takes both back to the main world');
+    const ipad1 = await TB.evaluate(() => { const p = window.pokecraft.player.pos; return [p.x, p.y, p.z]; });
+    t.ok(Math.hypot(ipad0[0] - ipad1[0], ipad0[1] - ipad1[1], ipad0[2] - ipad1[2]) < 0.3, 'iPad: Kid stands where Kid stood before');
     t.ok(!TA.errors.length && !TB.errors.length, `iPad: no page errors (${[...TA.errors, ...TB.errors].slice(0, 2).join(' / ')})`);
     await TA.context().close(); await TB.context().close();
   }
+  /* ------------------------------------------------ a trip to Playland and back (two browsers) ------------------------------------------------ */
+  if (want('trip')) {
+    const [A, B] = await openPair(browser, base);
+    await newGame(A, 0); await pause(A);
+    await newGame(B, 1); await pause(B);
+    await share(A, B);
+    const placeIs = (page, id, ms = 180000) => waitFor(page, i => window.pokecraft.place === i && !window.pokecraft.realms.busy, id, ms);
+    const where = page => page.evaluate(() => { const g = window.pokecraft, p = g.player; return [g.place, p.pos.x, p.pos.y, p.pos.z, p.yaw]; });
+    const same = (a, b) => a[0] === b[0] && Math.hypot(a[1] - b[1], a[2] - b[2], a[3] - b[3]) < 0.3 && Math.abs(a[4] - b[4]) < 0.01;
+    await standAt(A, 0); await standAt(B, 4, 2);
+    await A.evaluate(() => { window.pokecraft.player.yaw = 0.7; }); await B.evaluate(() => { window.pokecraft.player.yaw = -1.1; });
+    await A.waitForTimeout(1500);
+    // the host has not finished chapter 1: only tag
+    await openMenu(A);
+    t.ok((await menu(A)).map(x => x.word).join('|') === 'Battle|Trade|Hide and seek|Tag', 'the host is no Champion yet: no stadium games in the main world');
+    await A.evaluate(() => window.pokecraft.closeFriend());
+    // the host is a Champion: all seven, for the host and for the guest
+    await A.evaluate(() => { const g = window.pokecraft; g.champion = true; g.mp.sendState(); });
+    t.ok(await waitFor(B, () => window.pokecraft.mp.hostAvatar?.champ === true), 'the guest\'s game knows the host finished chapter 1');
+    for (const [page, who] of [[A, 'Dad'], [B, 'Kid']]) {
+      await openMenu(page);
+      const m = await menu(page);
+      const subs = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#friend .fm-btn')].map(b => [b.dataset.friend, b.querySelector('small')?.textContent || ''])));
+      t.ok(m.map(x => x.word).join('|') === 'Battle|Trade|Hide and seek|Tag|Football|Basketball|Kart race' && ['football', 'hoops', 'race'].every(id => !m.find(x => x.id === id).dim)
+        && subs.football === 'You both go to the Ball Stadium and back.' && subs.race === 'You both go to the Race Track and back.',
+      `${who} in the main world: Football, Basketball and Kart race too ("${subs.football}")`);
+      if (page === A) await shot(A, 'friend-menu-anywhere.png');
+      await page.evaluate(() => window.pokecraft.closeFriend());
+    }
+    const saved0 = await Promise.all([A, B].map(p => p.evaluate(() => JSON.stringify([window.pokecraft.beaten, window.pokecraft.cubes, window.pokecraft.stars]))));
+
+    // football asked by the GUEST in the main world: the host's Playland, and back
+    const at0 = [await where(A), await where(B)];
+    const ask = await invite(B, A, 'football');
+    t.ok(/Kid wants to play football with you! First to 3 wins\. You both go to the Ball Stadium and back\./.test(ask), `Dad is asked, with where it goes ("${ask}")`);
+    t.ok(await heard(A, /⚽ Off to the Ball Stadium!/) && await heard(B, /⚽ Off to the Ball Stadium!/), 'both hear "⚽ Off to the Ball Stadium!"');
+    t.ok(await placeIs(A, 'playland') && await placeIs(B, 'playland'), 'both are in Playland (the host went first, the guest followed, no questions)');
+    t.ok(await both(A, B, () => { const s = window.pokecraft.friendGames.state(); return s.started && (s.info?.phase === 'ready' || s.info?.phase === 'play'); }, null), 'the match starts when both are there');
+    const k = await Promise.all([A, B].map(p => p.evaluate(() => { const g = window.pokecraft, S = g.gymLive.of('part:stadium'), i = g.friendGames.state().info;
+      return { x: g.player.pos.x, z: g.player.pos.z, side: i.side, has: i.has, match: !!S.match, asking: !!g.ui.asking, guest: !!g.realms.stash?.guest, up: g.realms.upPart() }; })));
+    t.ok(k[1].side === 0 && k[0].side === 1 && k[0].has === 1 && Math.abs(k[1].x - 48) < 0.01 && Math.abs(k[0].x - 61) < 0.01 && k.every(q => q.match && Math.abs(q.z - 162) < 0.01),
+      `on the pitch at the kick-off: Kid (who asked) leads, Dad gets the ball (Kid x ${k[1].x}, Dad x ${k[0].x})`);
+    t.ok(!k[0].guest && k[1].guest && k[0].up?.id === 'swirl' && k[1].up?.id === 'swirl' && !k[0].asking && !k[1].asking, 'it is the host\'s Playland (the guest is a guest there); nobody was asked "Go too?"');
+    t.ok(await waitFor(A, () => { const a = [...window.pokecraft.mp.others.values()][0]; return a.here && a.inGame && (!a.lead || !a.lead.visible); }), 'no lead creature behind the friend on the pitch');
+    await shot(A, 'trip-football.png');
+    // Kid scores once with a real hold and let go, so it is a real match
+    await both(A, B, () => window.pokecraft.friendGames.state().info.phase === 'play');
+    const goal = await B.evaluate(() => {
+      const g = window.pokecraft, m = g.friendGames.play, S = g.gymLive.of('part:stadium'), p = g.player;
+      S.playing = () => true;
+      m.ball.reset([76, 11.401, 162]); m.shared.take();
+      p.pos.set(74.6, 11, 162); p.vel.set(0, 0, 0); p.yaw = -Math.PI / 2; p.pitch = 0;
+      g.gymLive.use(p); S.held.t0 = S.t - 0.6; g.gymLive.release(p);
+      for (let i = 0; i < 60 && g.friendGames.state().info.phase === 'play'; i++) S.update(0.05);
+      return g.friendGames.state().info.score.join();
+    });
+    t.ok(goal === '1,0' && await waitFor(A, () => window.pokecraft.friendGames.state().info?.score.join() === '1,0'), 'a goal counts on both screens there');
+    // Stop: both are back where they stood
+    await A.evaluate(() => window.pokecraft.friendGames.stop());
+    t.ok(await both(A, B, () => !window.pokecraft.friendGames.active), 'Stop ends it for both');
+    t.ok(await placeIs(A, 'main') && await placeIs(B, 'main') && await both(A, B, () => !window.pokecraft.friendGames.state().returning && !window.pokecraft.friendGames.tripping), 'both are back in the main world');
+    const at1 = [await where(A), await where(B)];
+    t.ok(same(at0[0], at1[0]) && same(at0[1], at1[1]), `each on the very spot (and facing the way) they stood before (${at1.map(a => a.slice(1, 4).map(n => n.toFixed(1))).join(' / ')})`);
+    t.ok(await said(A, /Back where you were!/) && await said(B, /Back where you were!/), 'both hear "Back where you were!"');
+    const back = await Promise.all([A, B].map(p => p.evaluate(() => { const g = window.pokecraft, q = g.player.pos, a = [...g.mp.others.values()][0];
+      return { floor: g.world.get(Math.floor(q.x), 42, Math.floor(q.z)), stash: !!g.realms.stash, here: a?.here, inGame: a?.inGame, asking: !!g.ui.asking, saved: JSON.stringify([g.beaten, g.cubes, g.stars]) }; })));
+    t.ok(back.every(b => b.floor === 3 && !b.stash && !b.asking), 'the main world is as they left it (their platforms are there), no question waits');
+    t.ok(await both(A, B, () => { const a = [...window.pokecraft.mp.others.values()][0]; return a.here && !a.inGame && a.lead?.visible; }), 'they see each other again, lead creatures and all');
+    t.ok(back[0].saved === saved0[0] && back[1].saved === saved0[1], 'nothing was saved by the match');
+
+    // a kart race asked by the host: the grid, and back
+    await A.evaluate(() => { window.__toasts.length = 0; }); await B.evaluate(() => { window.__toasts.length = 0; });
+    await invite(A, B, 'race');
+    t.ok(await placeIs(A, 'playland') && await placeIs(B, 'playland') && await both(A, B, () => window.pokecraft.friendGames.state().started && window.pokecraft.gymLive.of('part:race')?.duel), 'a kart race from the main world: both are in karts on the Race Track');
+    const grid = await Promise.all([A, B].map(p => p.evaluate(() => { const R = window.pokecraft.gymLive.of('part:race'), g = R.part.grid; return [Math.hypot(R.car.x - g.player[0], R.car.z - g.player[2]), Math.hypot(R.car.x - g.boss[0], R.car.z - g.boss[2])]; })));
+    t.ok(grid[0][0] < 0.01 && grid[1][1] < 0.01, 'Dad (who asked) on the first lane, Kid on the other');
+    await B.evaluate(() => window.pokecraft.friendGames.stop());
+    t.ok(await placeIs(A, 'main') && await placeIs(B, 'main') && await both(A, B, () => !window.pokecraft.friendGames.tripping), 'Stop: both are back in the main world');
+    const at2 = [await where(A), await where(B)];
+    t.ok(same(at0[0], at2[0]) && same(at0[1], at2[1]) && await A.evaluate(() => !window.pokecraft.player.carry), 'on their spots again, out of the karts');
+
+    // from the Swirl, and back to the Swirl
+    await A.evaluate(() => window.pokecraft.realms.enter('swirl', { back: window.pokecraft.world.portal.stand }));
+    await placeIs(A, 'swirl');
+    await waitFor(B, () => window.pokecraft.ui.asking); await B.evaluate(() => window.pokecraft.ui.askYes());
+    await placeIs(B, 'swirl');
+    await B.evaluate(() => { const g = window.pokecraft, a = [...g.mp.others.values()][0]; g.player.pos.set(a.target.x + 1.5, a.target.y, a.target.z); });
+    await both(A, B, () => { const g = window.pokecraft, a = [...g.mp.others.values()][0]; return a?.here && a.pos.distanceTo(g.player.pos) < 6; });
+    const sw0 = [await where(A), await where(B)];
+    await invite(A, B, 'hoops');
+    t.ok(await placeIs(A, 'playland') && await placeIs(B, 'playland') && await both(A, B, () => window.pokecraft.friendGames.state().started && window.pokecraft.friendGames.state().info?.sport === 'Basketball'), 'basketball from the Swirl: both are on the court in Playland');
+    await A.evaluate(() => window.pokecraft.friendGames.stop());
+    t.ok(await placeIs(A, 'swirl') && await placeIs(B, 'swirl') && await both(A, B, () => !window.pokecraft.friendGames.tripping), 'afterwards both are back in the Swirl');
+    const sw1 = [await where(A), await where(B)];
+    t.ok(same(sw0[0], sw1[0]) && same(sw0[1], sw1[1]), 'on the same spots in the Swirl');
+    t.ok(await A.evaluate(() => window.pokecraft.realms.leave('door')) && await placeIs(A, 'main'), 'and the Portal Door still takes the host home from there');
+    t.ok(!A.errors.length && !B.errors.length, `trip: no page errors (${[...A.errors, ...B.errors].slice(0, 2).join(' / ')})`);
+    await A.context().close(); await B.context().close();
+  }
+
 }

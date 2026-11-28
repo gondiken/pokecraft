@@ -638,6 +638,71 @@ export function createRealms(game, { createWorld, save, size }) {
       return true;
     },
 
+    // Owner 2026-11-28: a straight trip from wherever you are to another place, and back (friendgames.js: football, basketball and a
+    // kart race in the host's Playland, asked for anywhere). No entrance, no questions, no "one level" rule: the world you stand in
+    // is put away the usual way (the main world into the stash, a realm's edits into realmEdits) and the other one is built.
+    //   to = { place, pos?: [x, y, z, yaw, pitch, frame?] (stand exactly there: the way back), arrive?: a Picture World id (its arrival
+    //          spot), up?: { ret, via } (a Picture World's way up, as upPart() gave it), text? }
+    // The host goes with its own edits. A guest goes where the host already is (tripFollow asks the host for that place first).
+    async trip(to, { follow = null } = {}) {
+      const def = realmOf(to?.place);
+      if (busy || !game.started || (!def && to?.place !== MAIN)) return false;
+      if (to.place === game.place) return true;
+      if (game.place === MAIN && to.place === MAIN) return true;
+      busy = true;
+      lastGround = null;
+      game.riding?.stop('quiet');
+      game.player.carry?.leave?.();
+      game.ui.closeAsk?.();
+      show(to.text || def?.travelText || 'Travelling...', def?.travelIcon);
+      await frame();
+      try {
+        const p0 = game.player, w = game.world;
+        if (game.place === MAIN) {
+          stash = { seed: w.seed, edits: [...w.edits], homes: game.homes.toSave(), owner: game.homes.worldOwner, ret: [p0.pos.x, p0.pos.y, p0.pos.z, p0.yaw, p0.pitch] };
+          if (follow) stash.guest = true; // the realm is the host's (never my realmEdits)
+        } else if (!stash.guest) game.realmEdits = self.edits();
+        if (to.place === MAIN) {
+          const s0 = stash;
+          createWorld(s0.seed, s0.edits, size);
+          game.homes.load(s0.homes, s0.owner);
+          game.npcs.undisguise(key => game.beaten.includes(key));
+          game.place = MAIN;
+          stash = null;
+          const p = game.player, at = validRet(to.pos) ? to.pos : s0.ret;
+          p.pos.set(at[0], at[1], at[2]); p.yaw = at[3] ?? 0; p.pitch = at[4] ?? 0;
+        } else {
+          createWorld(realmSeed(stash.seed, def.seedSalt), follow ? follow.edits : game.realmEdits[def.id], def.size, { realm: def });
+          game.place = def.id;
+          stash.up = def.parent ? { id: def.parent, ret: cleanRet(to.up?.ret ?? follow?.up?.ret), via: cleanVia(to.up?.via ?? follow?.up?.via ?? to.arrive, def.id), edits: null } : null;
+          const p = game.player, at = game.world.arrivals?.[to.arrive ?? stash.up?.via], sp = follow?.spot;
+          p.pos.copy(game.spawnPoint); p.yaw = def.arriveYaw ?? -Math.PI / 2; p.pitch = 0;
+          if (validRet(to.pos)) { p.pos.set(to.pos[0], to.pos[1], to.pos[2]); p.yaw = to.pos[3] ?? 0; p.pitch = to.pos[4] ?? 0; if (Number.isInteger(to.pos[5])) p.setFrame?.(to.pos[5]); }
+          else if (Array.isArray(at)) { p.pos.set(at[0], at[1], at[2]); p.yaw = at[3] ?? p.yaw; }
+          else if (validRet(sp)) { p.pos.set(sp[0] + 1.5, sp[1], sp[2] + 1.5); for (let i = 0; i < 20 && p.collides(p.pos); i++) p.pos.y += 1; }
+        }
+        const p = game.player;
+        p.vel.set(0, 0, 0);
+        if (p.collides(p.pos)) p.pos.copy(game.spawnPoint);
+        game.weather.snap?.();
+      } finally { busy = false; hide(); }
+      told = {};
+      offered = true;
+      game.mp?.sendState();
+      save(true);
+      return true;
+    },
+    // A guest's half of a trip: the host is in `to.place` already; ask for that place as the host has it, then go.
+    async tripFollow(to) {
+      if (game.mp?.role !== 'guest' || busy || following) return false;
+      if (to.place === MAIN || to.place === game.place) return self.trip(to); // (the main world is in my stash already)
+      following = true;
+      let res = null;
+      try { res = await game.mp.askRealm(to.place); } catch { res = null; } finally { following = false; }
+      if (!res || res.error || !Array.isArray(res.edits)) return false;
+      return self.trip(to, { follow: res });
+    },
+
     // T40: losing a battle. A Picture World keeps you there (healed, at the nearest rest spot); the Dream wakes you up as before.
     lost() {
       const def = realmOf(game.place);
@@ -677,7 +742,7 @@ export function createRealms(game, { createWorld, save, size }) {
     update() {
       if (game.place !== MAIN && game.mp?.role !== 'guest' && !busy && game.player.onGround) lastGround = [game.player.pos.x, game.player.pos.y, game.player.pos.z];
       if (busy || following || game.inBattle || game.duels?.incoming || !game.started) return;
-      if (game.mp?.role === 'guest') {
+      if (game.mp?.role === 'guest' && !game.friendGames?.tripping) { // (a game's own trip to Playland and back goes by itself)
         const a = game.mp.hostAvatar, hp = hostPlace();
         if (a && (a.place || 'main') !== seenHost) { seenHost = a.place || 'main'; offered = false; }
         if (a && game.place !== MAIN && hp !== game.place) { // T40: the host is not here any more
