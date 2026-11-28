@@ -3,11 +3,11 @@
 //            stands), matchrules.js (kick-off spots, sides, the score, who won a race)
 //   tag    : two browsers in the main world: the friend menu, asking, no / yes, IT counts to three, a touch, no tag-back while
 //            counting, a tap, the IT! sign, the play area, no battles, time up, Stop, busy, a lost leader, real keys
-//   sports : two browsers in Playland: the friend menu's ten choices, a football match (kick-off spots, the keepers step aside,
+//   sports : two browsers in Playland: the friend menu's twelve choices, a football match (kick-off spots, the keepers step aside,
 //            one ball on both screens, a touch takes it, goals by the leader and by the friend, to 3), basketball (the ball in
 //            their hands, a basket), a kart race (both karts on the grid, laps, the times, the winner), nothing saved
-//   ipad   : two iPads: the menu fits with ten choices, taps ask and answer, the action button says Tag!
-//   trip   : two browsers far from Playland (owner 2026-11-28): no stadium games until the host is a Champion, then all ten
+//   ipad   : two iPads: the menu fits with twelve choices, taps ask and answer, the action button says Tag!
+//   trip   : two browsers far from Playland (owner 2026-11-28): no stadium games until the host is a Champion, then all twelve
 //            choices in the main world; football asked by the guest: both land in the host's Playland, play, and are back on
 //            the very spot they stood on; a kart race the same; from the Swirl and back to the Swirl
 // FRIEND_ONLY=rules|tag|sports|ipad|trip
@@ -479,10 +479,10 @@ export default async function ({ browser, base, t }) {
     // the friend menu in Playland
     await openMenu(A);
     const m2 = await menu(A);
-    t.ok(m2.map(x => x.word).join('|') === 'Battle|Trade|Hide and seek|Tag|Football|Basketball|Kart race|Parkour race|Bounce-Back|Bumper Cars' && ['tag', 'football', 'hoops', 'race'].every(id => !m2.find(x => x.id === id).dim),
+    t.ok(m2.map(x => x.word).join('|') === 'Battle|Trade|Hide and seek|Tag|Football|Basketball|Kart race|Parkour race|Bounce-Back|Bumper Cars|Joust|Shield Up!' && ['tag', 'football', 'hoops', 'race'].every(id => !m2.find(x => x.id === id).dim),
       `in Playland the friend menu also has Football, Basketball and Kart race (${m2.map(x => `${x.word}${x.dim ? ' (dim)' : ''}`).join('|')})`);
     const fits = await A.evaluate(() => [...document.querySelectorAll('#friend .fm-btn')].every(b => { const r = b.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && r.height >= 56; }));
-    t.ok(fits, 'all ten choices fit on the screen, each big enough');
+    t.ok(fits, 'all twelve choices fit on the screen, each big enough');
     await shot(A, 'friend-menu-playland.png');
     await A.evaluate(() => window.pokecraft.closeFriend());
 
@@ -728,12 +728,12 @@ export default async function ({ browser, base, t }) {
     await TA.evaluate(() => window.pokecraft.touch.reset());
     await standAt(TA, 0); await standAt(TB, 3);
     await TA.waitForTimeout(2000);
-    // the menu with all ten choices (as in Playland) fits an iPad
+    // the menu with all twelve choices (as in Playland) fits an iPad
     await TA.evaluate(async () => { const m = await import('/src/friendgames.js'); for (const d of Object.values(m.FRIEND_GAMES)) { d.shownWas = d.shown; d.shown = () => true; } });
     await openMenu(TA);
     const fit = await TA.evaluate(() => { const bs = [...document.querySelectorAll('#friend .fm-btn')], c = document.getElementById('friend-close').getBoundingClientRect();
       return { n: bs.length, ok: bs.every(b => { const r = b.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && r.height >= 56 && r.width >= 200; }), close: c.bottom <= innerHeight && c.top >= 0 }; });
-    t.ok(fit.n === 10 && fit.ok && fit.close, `iPad: ten choices and Close all fit, each big enough to tap (${JSON.stringify(fit)})`);
+    t.ok(fit.n === 12 && fit.ok && fit.close, `iPad: twelve choices and Close all fit, each big enough to tap (${JSON.stringify(fit)})`);
     await shot(TA, 'friend-menu-ipad.png');
     await TA.evaluate(async () => { const m = await import('/src/friendgames.js'); for (const d of Object.values(m.FRIEND_GAMES)) d.shown = d.shownWas; window.pokecraft.closeFriend(); });
     // taps ask and answer
@@ -805,14 +805,14 @@ export default async function ({ browser, base, t }) {
     await openMenu(A);
     t.ok((await menu(A)).map(x => x.word).join('|') === 'Battle|Trade|Hide and seek|Tag|Parkour race', 'the host is no Champion yet: no stadium games in the main world (the Parkour race is here)');
     await A.evaluate(() => window.pokecraft.closeFriend());
-    // the host is a Champion: all ten, for the host and for the guest
+    // the host is a Champion: all twelve, for the host and for the guest
     await A.evaluate(() => { const g = window.pokecraft; g.champion = true; g.mp.sendState(); });
     t.ok(await waitFor(B, () => window.pokecraft.mp.hostAvatar?.champ === true), 'the guest\'s game knows the host finished chapter 1');
     for (const [page, who] of [[A, 'Dad'], [B, 'Kid']]) {
       await openMenu(page);
       const m = await menu(page);
       const subs = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#friend .fm-btn')].map(b => [b.dataset.friend, b.querySelector('small')?.textContent || ''])));
-      t.ok(m.map(x => x.word).join('|') === 'Battle|Trade|Hide and seek|Tag|Football|Basketball|Kart race|Parkour race|Bounce-Back|Bumper Cars' && ['football', 'hoops', 'race'].every(id => !m.find(x => x.id === id).dim)
+      t.ok(m.map(x => x.word).join('|') === 'Battle|Trade|Hide and seek|Tag|Football|Basketball|Kart race|Parkour race|Bounce-Back|Bumper Cars|Joust|Shield Up!' && ['football', 'hoops', 'race'].every(id => !m.find(x => x.id === id).dim)
         && subs.football === 'You both go to the Ball Stadium and back.' && subs.race === 'You both go to the Race Track and back.',
       `${who} in the main world: Football, Basketball and Kart race too ("${subs.football}")`);
       if (page === A) await shot(A, 'friend-menu-anywhere.png');

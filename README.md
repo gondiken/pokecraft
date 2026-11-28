@@ -323,11 +323,13 @@ You see each other walking around with name tags, with each player's lead creatu
 - **Basketball** (first to 5): one ball on the court. With the ball you start too far for a shot, so dribble closer (run into the ball), then hold **Shoot!** and let go at the top of your jump. While the ball is in your hands nobody can take it; before that your friend can knock it away.
 - **Kart race** (3 laps): each of you drives your own kart on the Race Track, with the same lamps, flags, boost pads and jump as Rio's race. You see your friend's kart, but karts never bump. Each game times its own race, so a slow internet never costs you a place: the smaller time wins.
 
-**Parkour race, Bounce-Back and Bumper Cars** (more games for two):
+**Parkour race, Bounce-Back, Bumper Cars, Joust and Shield Up!** (more games for two):
 - **Parkour race**: race each other up the Obstacle Course in the main world. No badge needed: you both go to the start, count 3-2-1, and the first one to the top flag wins. A fall takes you back to your own last flag. From anywhere else (once the host is a Champion) you both travel there and back.
 - **Bounce-Back** (first to 3): on the Mirror Palace's court, one of you at each end with a hand mirror. Slide it with the stick and tilt it the way you look; the shine ball bounces off it like light. Get it past your friend's mirror to score.
 - **Bumper Cars** (first to 3): in the Funfair, a balloon is tied to the back of each of your cars. Bump your friend from behind to pop it! The other bumper cars keep driving round as obstacles, but only your two cars have balloons. Turn to face your friend to keep your own balloon safe.
-These three are also asked for anywhere once the host is a Champion, with the trip there and back.
+- **Joust** (first to 3 hits): in the Castle's Tilt Yard you ride at each other and aim your lance at the gold spot on your friend's shield. Your own shield follows your lance a little, so you can't hold it still while you aim: lead the spot!
+- **Shield Up!** (5 throws each, then swap): one of you throws pumpkins from the catapults (look at one and press Throw!, look up high for a pumpkin from the sky), the other blocks on a Shield Stone. A block is a point for the blocker, a splat a point for the thrower.
+These are also asked for anywhere once the host is a Champion, with the trip there and back. The Joust and Shield Up! need the host to be a Champion even inside the Castle.
 
 None of this is saved and nothing counts for the Captain's goals or Rio's race: it is just for fun, as often as you like. During any of these games your friend's lead creature stays out of the way, and **E** / the round button only do the game's own thing (kick, shoot, tag): looking at your friend, a person or a wild creature does nothing until the game is over.
 
