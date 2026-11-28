@@ -44,6 +44,7 @@ export class FairLive {
     // the three games (rounds, pops, rings: in memory for the trip)
     this.newGames();
     this.drive = -1;                                  // the bay of the car you drive, or -1
+    this.duel = null;                                 // Bumper Cars for two (bumperduel.js), or null: then everything is as before
     this.parked = BAYS.map(b => ({ x: b.x, z: b.z, yaw: b.yaw }));
     this.wob = BOTS.map(() => 0);
     this.wish = { x: 0, z: 0 }; this.spaceHeld = true; this.honkAt = -9; this.hitAt = -9;
@@ -102,7 +103,25 @@ export class FairLive {
       const at = p.carry.safe?.() ?? { x: p.pos.x, y: p.pos.y, z: p.pos.z };
       p.carry = null; p.pos.set(at.x, at.y, at.z); p.vel.set(0, 0, 0);
     }
+    if (p?.carry && this.duel && p.carry === this.duel.carry) { p.carry = null; p.pos.set(p.pos.x, 11, p.pos.z); p.vel.set(0, 0, 0); } // (Bumper Cars for two)
     this.drive = -1; this.riding = false; this.coaster = null; this.slide = null;
+  }
+
+  /* ---- Bumper Cars for two (bumperduel.js, owner 2026-11-28): two friends' cars instead of the game; the bots drive on ---- */
+  // duel = { carry, bays: [mine, theirs], me() -> { x, z, yaw, speed }, friend() -> { x, z, yaw } | null, bot(i) -> botAt fields,
+  //          near() -> the button's word, use() }. Your own Bumper Cars game (rounds, balloons, the ticket) waits untouched meanwhile.
+  startDuel(duel) {
+    if (this.drive >= 0) this.getOut();
+    if (this.riding) this.getOff();
+    this.parked = BAYS.map(b => ({ x: b.x, z: b.z, yaw: b.yaw }));
+    this.duel = duel;
+  }
+  endDuel() {
+    if (!this.duel) return;
+    const p = this.game.player;
+    if (p?.carry === this.duel.carry) p.carry = null;
+    this.duel = null;
+    this.parked = BAYS.map(b => ({ x: b.x, z: b.z, yaw: b.yaw }));
   }
 
   /* ---------------------------------------------- the rides that carry you ---------------------------------------------- */
@@ -135,6 +154,7 @@ export class FairLive {
   // The word for the big action button.
   near(p = this.game.player) {
     if (!p || !this.playing() || this.game.inBattle) return null;
+    if (this.duel) return this.duel.near(); // (Bumper Cars for two)
     if (this.drive >= 0) return 'Get out';
     if (this.riding) return 'Get off';
     if (p.carry) return null;
@@ -162,6 +182,7 @@ export class FairLive {
 
   use(p = this.game.player) {
     if (!p || !this.playing() || this.game.inBattle) return false;
+    if (this.duel) return this.duel.use(); // (Bumper Cars for two)
     if (this.drive >= 0) { this.getOut(); return true; }
     if (this.riding) { this.getOff(); return true; }
     const w = this.near(p);
@@ -198,7 +219,7 @@ export class FairLive {
 
   /* ---------------------------------------------- the guide ---------------------------------------------- */
   aim(p) {
-    if (!this.inZone(p, 2)) return null; // (p is a position { x, y, z }, as the realm guide passes it)
+    if (this.duel || !this.inZone(p, 2)) return null; // (p is a position { x, y, z }, as the realm guide passes it; Bumper Cars for two: friendgames.js points)
     const st = ticketState(this.game), onStage = p.y > 18 && inRect(STAGE, p.x, p.z), carry = this.game.player?.carry;
     if (carry && (carry === this.coaster || carry === this.slide)) return { x: STAGE.end[0], z: STAGE.end[2], text: () => 'Wheee! 🎢' };
     if (onStage) {
@@ -423,7 +444,7 @@ export class FairLive {
   chip(pl) {
     const ui = this.game.ui;
     if (!ui?.setScore) return;
-    if (!this.inZone(pl.pos)) { if (this.chipOn) { ui.setScore(null); this.chipOn = false; this.chipText = null; } return; }
+    if (!this.inZone(pl.pos) || this.duel) { if (this.chipOn) { ui.setScore(null); this.chipOn = false; this.chipText = null; } return; }
     const st = ticketState(this.game);
     let text = `🎟️ ${st.n} / ${TICKETS}`, done = false;
     const T = TRAMP, onTramp = !pl.carry && pl.pos.x >= T.x0 - 1 && pl.pos.x <= T.x1 + 2 && pl.pos.z >= T.z0 - 1 && pl.pos.z <= T.z1 + 2;
@@ -442,7 +463,7 @@ export class FairLive {
     if (!this.paused()) {
       this.clock += dt;
       if (this.gamesHard !== this.hard && this.drive < 0 && !this.riding) this.newGames();
-      this.driveStep(dt);
+      if (!this.duel) this.driveStep(dt); // (Bumper Cars for two: bumperduel.js drives the cars)
       if (this.riding) this.ringStep(dt);
       else this.spin += omegaOf(this.seat.hard, this.seat.round, this.seat.help.slow) * dt; // (the carousel turns at the speed of your next round)
       this.rideStep(dt);
@@ -470,11 +491,21 @@ export class FairLive {
     for (const o of [this.fleet, this.ringMesh, this.airMesh, this.coasterCar, this.slideMesh, this.confetti]) o.visible = !far;
     car.horses.visible = !far;
     // bumper cars: the six bays (your car moves), the bots' cars and heads and balloons
-    for (let i = 0; i < BAYS.length; i++) {
+    const duel = this.duel;
+    if (duel) { // Bumper Cars for two: both friends' cars in their bays' slots, the bots at the shared clock, no bot balloons
+      const me = duel.me(), them = duel.friend();
+      for (let i = 0; i < BAYS.length; i++) {
+        if (i === duel.bays[0]) fleet.car(i, me.x, 11, me.z, me.yaw, Math.sin(T * 40) * Math.min(0.06, me.speed * 0.01));
+        else if (i === duel.bays[1] && them) fleet.car(i, them.x, 11, them.z, them.yaw);
+        else fleet.car(i, this.parked[i].x, 11, this.parked[i].z, this.parked[i].yaw);
+      }
+      BOTS.forEach((_, i) => { const b = duel.bot(i); fleet.car(6 + i, b.x, 11, b.z, b.yaw); fleet.head(i, b.x, 11, b.z, b.yaw); fleet.hideBalloon(i); });
+    }
+    for (let i = 0; i < BAYS.length && !duel; i++) {
       if (i === this.drive) fleet.car(i, this.car.x, 11, this.car.z, this.car.yaw, Math.sin(T * 40) * Math.min(0.06, this.car.speed * 0.01));
       else fleet.car(i, this.parked[i].x, 11, this.parked[i].z, this.parked[i].yaw);
     }
-    BOTS.forEach((_, i) => {
+    if (!duel) BOTS.forEach((_, i) => {
       const b = fl.at(i), tired = b.tired ? Math.sin(T * 9) * 0.06 : 0, wob = Math.sin(T * 32) * 0.14 * this.wob[i] + tired; // (a tired bot puffs and nods)
       fleet.car(6 + i, b.x, 11, b.z, b.yaw, wob);
       fleet.head(i, b.x, 11, b.z, b.yaw, wob);
