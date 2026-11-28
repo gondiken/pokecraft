@@ -636,6 +636,7 @@ body.touch #nav .nav-tile { min-height: 76px; font-size: 14px; }
 #friend .panel:has(.fm-list.many) { max-width: 760px; }
 #friend .fm-list.many { display: grid; grid-template-columns: 1fr 1fr; }
 @media (max-width: 420px) { #friend .fm-list.many { grid-template-columns: 1fr; } }
+@media (min-width: 900px) { #friend .panel:has(.fm-list.many) { max-width: 1000px; } #friend .fm-list.many { grid-template-columns: 1fr 1fr 1fr; } } /* twelve choices: three columns where there is room (an iPad on its side, a computer) */
 #friend .fm-icon { font-size: 30px; flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
 #friend .fm-icon svg { display: block; }
 #friend .fm-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }

@@ -58,6 +58,14 @@ export const FRIEND_ART = {
     + `<path d="M3 36C3 30 8 27 14 27H33C39 27 44 30 44 36C44 40 41 42 37 42H10C6 42 3 40 3 36Z" ${F('#4fb4f0')}/>`
     + `<path d="M3 36C3 39 6 42 10 42H37C41 42 44 39 44 36" ${K(4.5)}/><path d="M3 36C3 39 6 42 10 42H37C41 42 44 39 44 36" stroke="#fff" stroke-width="2" fill="none"/>`
     + `<circle cx="17" cy="21" r="4.5" ${W}/><path d="M14 27H20V30H14Z" ${W}/><ellipse cx="25" cy="28" rx="3.2" ry="1.6" ${W}/>` },
+  joust: { bg: '#3a7ac8', art: // a lance's point striking a round shield, a burst where it hits
+    `<circle cx="34" cy="22" r="11" ${F('#e8c060')}/><circle cx="34" cy="22" r="6.5" ${F('#d8443c')}/><circle cx="34" cy="22" r="2.4" fill="#fff"/>`
+    + `<path d="M3 37L11 45L27 26Z" ${W}/><path d="M9 39L13 43M14 34L17 37M19 30L21 32" stroke="#d8443c" stroke-width="2.4" stroke-linecap="round"/>` + line('M22 18L18 14M20 25H15M27 13L26 8', 2.2) },
+  shieldup: { bg: '#5a8a3a', art: // a big shield up, an orange pumpkin flying at it
+    `<path d="M28 7L44 12V24C44 34 36 40 28 43C20 40 12 34 12 24V12Z" ${F('#4a7ad8')}/><path d="M28 12V38M17 21H39" ${S(2.6)}/>`
+    + `<ellipse cx="10" cy="33" rx="7.5" ry="6.2" ${F('#f08a24')}/><path d="M10 27.5C9 30 9 36 10 39M6 28.5C4.5 31 4.5 35 6 37.5M14 28.5C15.5 31 15.5 35 14 37.5" ${K(1.3)}/>`
+    + `<path d="M10 27.5C10 25 11.5 23.5 13.5 23" stroke="#3a7a2a" stroke-width="2.6" stroke-linecap="round" fill="none"/>`
+    + line('M3 22L7 24M2 28H5', 1.8) },
 };
 
 let made = 0;
