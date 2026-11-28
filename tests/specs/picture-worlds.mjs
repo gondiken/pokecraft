@@ -462,7 +462,8 @@ async function pairPart({ browser, base, t }) {
   await Bp.evaluate(() => window.pokecraft.ui.askYes());
   await placeIs(Bp, 'swirl');
   const sblock = await A.evaluate(() => { const g = window.pokecraft, x = 49, z = 80, y = g.world.surface(x, z).y + 1; g.world.set(x, y, z, 8); g.mp.sendBlock(x, y, z, 8); return [x, y, z]; });
-  await waitFor(Bp, c => window.pokecraft.world.get(...c) === 8, sblock, 30000);
+  await Bp.waitForTimeout(3000);
+  t.ok(await Bp.evaluate(c => window.pokecraft.world.get(...c) !== 8, sblock), 'the Swirl is locked (owner 2026-11-28): a friend\'s block message there changes nothing');
   // hide and seek is not running; Dad steps into the house picture
   const fa = await atFrame(A, 'house');
   await A.evaluate(c => { const g = window.pokecraft; g.portal.use({ x: c[0], y: c[1], z: c[2], id: g.world.get(...c) }); }, fa);
@@ -474,19 +475,16 @@ async function pairPart({ browser, base, t }) {
   await placeIs(Bp, 'house');
   const k1 = await Bp.evaluate(() => { const g = window.pokecraft, a = [...g.mp.others.values()][0]; return { via: g.realms.via, up: g.realms.upPart(), guest: g.realms.stash.guest, near: a ? Math.hypot(a.pos.x - g.player.pos.x, a.pos.z - g.player.pos.z) : -1 }; });
   t.ok(k1.via === 'house' && k1.up.id === 'swirl' && k1.guest, 'Kid is in the Giant House with the Swirl as his way up');
-  // blocks both ways (on a buildable spot near the arrival: most of the Giant House is fixed kitchen)
-  const hb = await A.evaluate(() => { const g = window.pokecraft, w = g.world, a = w.arrivals.house, spot = dx => { for (let r = 2; r < 30; r++) for (const s of [1, -1]) { const x = Math.floor(a[0]) + s * r * dx, z = Math.floor(a[2]) + s * r * (1 - dx), y = w.surface(x, z).y + 1; if (y > 0 && y < 46 && w.editAllowed(x, y, z, 11) && w.get(x, y, z) === 0) return [x, y, z]; } return null; }; const [x, y, z] = spot(1); g.world.set(x, y, z, 11); g.mp.sendBlock(x, y, z, 11); return [x, y, z]; });
-  await waitFor(Bp, c => window.pokecraft.world.get(...c) === 11, hb, 30000);
-  const kb = await Bp.evaluate(() => { const g = window.pokecraft, w = g.world, a = w.arrivals.house, spot = dx => { for (let r = 2; r < 30; r++) for (const s of [1, -1]) { const x = Math.floor(a[0]) + s * r * dx, z = Math.floor(a[2]) + s * r * (1 - dx), y = w.surface(x, z).y + 1; if (y > 0 && y < 46 && w.editAllowed(x, y, z, 11) && w.get(x, y, z) === 0) return [x, y, z]; } return null; }; const [x, y, z] = spot(0); g.world.set(x, y, z, 13); g.mp.sendBlock(x, y, z, 13); return [x, y, z]; });
-  await waitFor(A, c => window.pokecraft.world.get(...c) === 13, kb, 30000);
-  t.ok(true, "blocks travel both ways in the Picture World");
+  // owner 2026-11-28: chapter 2's worlds are locked: nowhere in the Giant House can be built or broken
+  const locked = await A.evaluate(() => { const w = window.pokecraft.world, a = w.arrivals.house; let n = 0; for (let dx = -20; dx <= 20; dx += 2) for (let dz = -20; dz <= 20; dz += 2) { const x = Math.floor(a[0]) + dx, z = Math.floor(a[2]) + dz; if (!w.inBounds(x, 1, z)) continue; const y = w.surface(x, z).y; if (w.editAllowed(x, y + 1, z, 11) || w.editAllowed(x, y, z, 0)) n++; } return n; });
+  t.ok(locked === 0, `the Giant House is locked: no cell near the arrival can be built on or broken (${locked})`);
   const kSave = await Bp.evaluate(() => { window.pokecraft.save(); const s = JSON.parse(localStorage.getItem('pokecraft-save-v2')); return { re: s.realmEdits, place: s.place }; });
   t.ok(!(kSave.re.house?.length) && !(kSave.re.swirl?.length), "Kid's save has no house or Swirl edits from Dad");
   // Dad goes back up: Kid goes too, and sees Dad's Swirl block
   await A.evaluate(() => { const g = window.pokecraft, d = g.world.doors[0], m = d.surface[0]; g.portal.use({ x: m[0], y: m[1], z: m[2], id: 145 }); });
   await placeIs(A, 'swirl'); await placeIs(Bp, 'swirl');
   const kb2 = await Bp.evaluate(c => window.pokecraft.world.get(...c), sblock);
-  t.ok(kb2 === 8, "Dad went back to the Swirl and Kid went too, with Dad's Swirl block");
+  t.ok(kb2 !== 8, "Dad went back to the Swirl and Kid went too (and the locked Swirl has no block of Dad's)");
   // Kid goes home alone, then follows Dad (in the house) straight from main
   await Bp.evaluate(() => window.pokecraft.realms.leave('door', { home: true }));
   await placeIs(Bp, 'main');

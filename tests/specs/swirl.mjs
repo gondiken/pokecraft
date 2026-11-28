@@ -166,7 +166,7 @@ export default async function ({ browser, base, t }) {
   t.ok(still.clock.includes('✦ Swirl') && still.moon === null && still.kind === 'clear' && !still.shooting, `the clock says Swirl, no moon, always clear: no shooting-star toast (${still.clock} ${still.moon} ${still.kind})`);
   t.ok(still.bg === still.bg2, 'the sky does not change with the main clock');
 
-  // 10. Place a block on the hub, save, reload: still in the Swirl, where you were, block kept.
+  // 10. Try to place a block on the hub (owner 2026-11-28: the Swirl is locked), save, reload: still in the Swirl, where you were, nothing built.
   const placed = await page.evaluate(async () => {
     const g = window.pokecraft, { B } = await import('/src/blocks.js'), w = g.world;
     g.hotbar[g.selected] = B.PLANKS;
@@ -175,13 +175,13 @@ export default async function ({ browser, base, t }) {
     g.player.pos.x += 1; g.save();
     return { cell: [x, y + 1, z], id: w.get(x, y + 1, z), pos: g.player.pos.toArray(), top: w.get(x, y, z) };
   });
-  t.ok(placed.id === 8 && (placed.top === 127 || placed.top === 132), `you can build on the Swirl Stone of the hub (${JSON.stringify(placed)})`);
+  t.ok(placed.id === 0 && (placed.top === 127 || placed.top === 132), `nothing can be built on the Swirl Stone of the hub (${JSON.stringify(placed)})`);
   await page.reload();
   await page.waitForFunction(() => window.pokecraft?.world);
   await continueGame(page);
   const loaded = await page.evaluate(([c, pos]) => { const g = window.pokecraft, p = g.player.pos; return { place: g.place, realm: g.world.realm?.id, id: g.world.get(...c), d: Math.hypot(p.x - pos[0], p.z - pos[2]), stash: !!g.realms.stash }; }, [placed.cell, placed.pos]);
   t.ok(loaded.place === 'swirl' && loaded.realm === 'swirl' && loaded.d < 1.5 && loaded.stash, `a save made in the Swirl loads in the Swirl, where you were (${JSON.stringify(loaded)})`);
-  t.ok(loaded.id === 8, 'the block you built on the hub is still there');
+  t.ok(loaded.id === 0, 'after a reload the hub is still as it was');
 
   // 9. Back through the door.
   await page.evaluate(toasts);
